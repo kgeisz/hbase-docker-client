@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+"""
+Reproduces HBASE-30090: Table on replica cluster not refreshing after flipping read-only flag twice
+https://issues.apache.org/jira/browse/HBASE-30090
+
+Tables on a replica cluster will have an incorrect number of rows after the read-only flag has been changed twice.
+This script creates a table 't1', and adds one row of data before changing the read-only flag. After two changes to
+the flag on each cluster, added data to the active cluster will not show up on the replica cluster, even after flushing
+the table on the active cluster and refreshing meta and HFiles on the replica.
+
+This script expects an invalid row count with table 't1' on the replica cluster after two read-only flag changes.
+An exception is thrown otherwise. The 'iterations' variable can be changed to reproduce this issue multiple times
+in one run.
+
+Usage: python3 reproduce_HBASE_30090.py
+"""
 from dotenv import load_dotenv
 from environment_loader import get_env
 from hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
@@ -23,7 +38,8 @@ if __name__ == '__main__':
                                  cluster_name="Cluster 2",
                                  local_conf='./conf2/hbase-site.xml')
 
-    for i in range(1, 2):
+    iterations = 1
+    for i in range(1, iterations+1):
         logger.info(f"----- Iteration {i} -----")
         try:
             # Create table on active cluster
@@ -97,9 +113,10 @@ if __name__ == '__main__':
         except AssertionError as e:
             expected_msg = ("Expected table 't1' on Cluster 2 to have 3 row(s). "
                             "Instead got 2 row(s)")
-            if expected_msg not in str(e):
-                raise RuntimeError(f"Expected an AssertionError to occur with "
-                                   f"the following message:\n{expected_msg}")
-            else:
+            if expected_msg in str(e):
                 logger.info(f"*** Got invalid row count for table 't1' on "
                             f"{cluster2.name} as expected ***")
+            else:
+                raise RuntimeError(f"Expected an AssertionError to occur with "
+                                   f"the following message:\n{expected_msg}")
+        logger.info(f"Finished iteration {i} of {iterations}")
