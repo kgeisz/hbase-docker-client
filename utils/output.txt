@@ -1,0 +1,35 @@
+Key range: [50000..50999]
+Multi-puts: false
+Columns per key: 1..2000
+Data size per column: 50..150
+2026-02-20T23:54:38,476 WARN  [main {}] util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-02-20T23:54:38,729 INFO  [RPCClient-NioEventLoopGroup-1-2 {}] Configuration.deprecation: hbase.client.pause.cqtbe is deprecated. Instead, use hbase.client.pause.server.overloaded
+2026-02-20T23:54:38,764 INFO  [main {}] util.LoadTestUtil: Number of live regionservers: 1, pre-splitting table into 5 regions (regions per server: 5)
+2026-02-20T23:54:38,809 INFO  [RPCClient-NioEventLoopGroup-1-3 {}] client.AsyncHBaseAdmin: rg.apache.hadoop.hbase.master.procedure.CreateTableProcedure.prepareCreate(CreateTableProcedure.java:278)
+	at org.apache.hadoop.hbase.master.procedure.CreateTableProcedure.executeFromState(CreateTableProcedure.java:95)
+	at org.apache.hadoop.hbase.master.procedure.CreateTableProcedure.executeFromState(CreateTableProcedure.java:60)
+	at org.apache.hadoop.hbase.procedure2.StateMachineProcedure.execute(StateMachineProcedure.java:188)
+	at org.apache.hadoop.hbase.procedure2.Procedure.doExecute(Procedure.java:960)
+	at org.apache.hadoop.hbase.procedure2.ProcedureExecutor.execProcedure(ProcedureExecutor.java:1826)
+	at org.apache.hadoop.hbase.procedure2.ProcedureExecutor.executeProcedure(ProcedureExecutor.java:1503)
+	at org.apache.hadoop.hbase.procedure2.ProcedureExecutor$WorkerThread.runProcedure(ProcedureExecutor.java:2158)
+	at org.apache.hadoop.hbase.trace.TraceUtil.trace(TraceUtil.java:216)
+	at org.apache.hadoop.hbase.procedure2.ProcedureExecutor$WorkerThread.run(ProcedureExecutor.java:2185)
+
+2026-02-20T23:54:38,809 WARN  [main {}] util.LoadTestUtil: Table usertable already exists, continuing
+2026-02-20T23:54:38,811 INFO  [main {}] client.AsyncConnectionImpl: Connection has been closed by main.
+2026-02-20T23:54:38,813 INFO  [Registry-endpoints-refresh-end-points {}] client.RegistryEndpointsRefresher: Registry end points refresher loop exited.
+2026-02-20T23:54:38,828 INFO  [main {}] util.LoadTestTool: Disabling table usertable
+2026-02-20T23:54:39,469 INFO  [RPCClient-NioEventLoopGroup-1-6 {}] client.AsyncHBaseAdmin: Operation: DISABLE, Table Name: default:usertable completed
+2026-02-20T23:54:39,483 INFO  [RPCClient-NioEventLoopGroup-1-6 {}] client.AsyncHBaseAdmin: Operation: MODIFY_COLUMN_FAMILY, Table Name: default:usertable completed
+2026-02-20T23:54:39,483 INFO  [main {}] util.LoadTestTool: Enabling table usertable
+2026-02-20T23:54:40,118 INFO  [RPCClient-NioEventLoopGroup-1-6 {}] client.AsyncHBaseAdmin: Operation: ENABLE, Table Name: default:usertable completed
+2026-02-20T23:54:40,118 INFO  [main {}] client.AsyncConnectionImpl: Connection has been closed by main.
+2026-02-20T23:54:40,119 INFO  [Registry-endpoints-refresh-end-points {}] client.RegistryEndpointsRefresher: Registry end points refresher loop exited.
+Starting to write data...
+2026-02-20T23:54:45,131 INFO  [MultiThreadedAction-ProgressReporter-1771631680124 {}] util.MultiThreadedAction: [W:100] Keys=348, cols=269.3 K, time=00:00:05 Overall: [keys/s= 69.58608278344332, latency=1427.74 ms] Current: [keys/s=69.6, latency=1427.74 ms], wroteUpTo=49999
+2026-02-20T23:54:50,134 INFO  [MultiThreadedAction-ProgressReporter-1771631680124 {}] util.MultiThreadedAction: [W:100] Keys=648, cols=555.8 K, time=00:00:10 Overall: [keys/s= 64.74173244080328, latency=1538.99 ms] Current: [keys/s=60.0, latency=1668.05 ms], wroteUpTo=49999
+2026-02-20T23:54:55,136 INFO  [MultiThreadedAction-ProgressReporter-1771631680124 {}] util.MultiThreadedAction: [W:100] Keys=949, cols=843.0 K, time=00:00:15 Overall: [keys/s= 63.220305109586306, latency=1577.41 ms] Current: [keys/s=60.2, latency=1660.11 ms], wroteUpTo=49999
+2026-02-20T23:54:58,175 INFO  [main {}] client.AsyncConnectionImpl: Connection has been closed by main.
+2026-02-20T23:54:58,175 INFO  [Registry-endpoints-refresh-end-points {}] client.RegistryEndpointsRefresher: Registry end points refresher loop exited.
+Failed to write keys: 0

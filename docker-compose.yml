@@ -1,0 +1,29 @@
+# version: '3.8'
+
+# Variables are created in .env file
+services:
+  hbase:
+    image: ${HBASE_IMAGE}
+    container_name: ${HBASE_CONTAINER_NAME}
+    hostname: ${HBASE_CONTAINER_NAME}
+    ports:
+      - ${ACTIVE_CLUSTER_PORT}:16010 # Master UI
+    volumes:
+      - ./utils:/opt/utils
+      - ./tmp/data-store/hbase:/data-store/hbase
+      - ./conf1/hbase-site.xml:${HBASE_CONF_DIR}/hbase-site.xml
+      - ./conf1/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
+      - ./conf1/log4j2.properties:${HBASE_CONF_DIR}/log4j2.properties
+
+  hbase2:
+    image: ${HBASE_IMAGE}
+    container_name: ${HBASE_CONTAINER_NAME}-2
+    hostname: ${HBASE_CONTAINER_NAME}-2
+    ports:
+      - ${REPLICA_CLUSTER_PORT}:16010 # Master UI
+    volumes:
+      - ./utils:/opt/utils
+      - ./tmp/data-store/hbase:/data-store/hbase
+      - ./conf2/hbase-site.xml:${HBASE_CONF_DIR}/hbase-site.xml
+      - ./conf2/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
+      - ./conf2/log4j2.properties:${HBASE_CONF_DIR}/log4j2.properties
