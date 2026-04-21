@@ -9,12 +9,6 @@ from logger_config import get_logger
 logger = get_logger(__name__)
 
 
-def assert_row_count(cluster, table_name, row, column, num_rows):
-    output = cluster.get(table_name, row, column)
-    assert f"{num_rows} row(s)" in output, (f"Expected get command to return {num_rows} row(s) "
-                                            f"for table '{table_name}' on {cluster.name}")
-
-
 def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column):
     """
     Verifies data can be added to/deleted from the active cluster, and that the read-replica cluster
@@ -24,11 +18,11 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     # Add data to the table on the active cluster
     logger.info(f"Adding data to '{table_name}' on {active_cluster.name} and verifying it exists")
     active_cluster.put(table_name, "row1", column, "value1")
-    assert_row_count(active_cluster, table_name, "row1", column, 1)
+    active_cluster.verify_table_row_count(table_name, 1)
 
     # Verify the read-replica cluster does not see this new data
     logger.info(f"Verifying '{table_name}' on {replica_cluster.name} still has 0 rows")
-    assert_row_count(replica_cluster, table_name, "row1", column, 0)
+    replica_cluster.verify_table_row_count(table_name, 0)
 
     # Flush the table's data on the active cluster
     logger.info(f"Flushing '{table_name}' on {active_cluster.name} and refreshing meta and "
@@ -40,7 +34,7 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     replica_cluster.refresh_meta()
     replica_cluster.refresh_hfiles()
     logger.info(f"Verifying '{table_name}' on {replica_cluster} has data after refreshing HFiles")
-    assert_row_count(replica_cluster, table_name, "row1", column, 1)
+    replica_cluster.verify_table_row_count(table_name, 1)
 
     # Verify data cannot be added to the table on the read-replica cluster
     logger.info(f"Verifying data cannot be added to '{table_name}' on {replica_cluster.name}")
@@ -55,15 +49,15 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
                 f"and verifying it is gone")
     active_cluster.delete(table_name, "row1", column)
     active_cluster.flush(table_name)
-    assert_row_count(active_cluster, table_name, "row1", column, 0)
+    active_cluster.verify_table_row_count(table_name, 0)
 
     # Verify deleted data still exists on the read-replica cluster
     logger.info(f"Verifying deleted row still exists on {replica_cluster.name}")
-    assert_row_count(replica_cluster, table_name, "row1", column, 1)
+    replica_cluster.verify_table_row_count(table_name, 1)
 
     # Verify the read-replica cluster no longer has the data after refreshing HFiles
     replica_cluster.refresh_hfiles()
-    assert_row_count(replica_cluster, table_name, "row1", column, 0)
+    replica_cluster.verify_table_row_count(table_name, 0)
 
 
 if __name__ == '__main__':

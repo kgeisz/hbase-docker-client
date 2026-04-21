@@ -313,6 +313,7 @@ class HBaseDockerClient:
             for table in tables:
                 active_cluster.disable_table(table)
                 active_cluster.drop_table(table)
-            logger.info(f"Running 'refresh_meta' on {replica_cluster.name} to sync it with "
-                        f"the {active_cluster.name}")
+            logger.info(f"Running 'refresh_meta' and 'refresh_hfiles' on {replica_cluster.name} to sync it with "
+                        f"{active_cluster.name}")
             replica_cluster.refresh_meta()
+            replica_cluster.refresh_hfiles()
