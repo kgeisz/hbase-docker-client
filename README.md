@@ -35,7 +35,7 @@ clean up this directory before starting the containers.
 ```
 3. Start the containers. One container will start as the active cluster. The other will start as the read-replica cluster.
 ```
-% rm -rf ./tmp && docker compose -f /Users/kgeiszler/projects/hbase-docker-client/docker-compose.yml up -d
+% rm -rf ./tmp && docker compose -f $HOME/hbase-docker-client/docker-compose.yml up -d
 ```
 4. Run a script:
 ```
