@@ -15,9 +15,11 @@ if __name__ == "__main__":
     container_base = get_env('HBASE_CONTAINER_NAME')
 
     active_cluster = HBaseDockerClient(container_name=container_base,
+                                       local_conf=get_env('ACTIVE_CLUSTER_CONF'),
                                        hbase_ui_port=active_port,
                                        cluster_name="Active Cluster")
     replica_cluster = HBaseDockerClient(container_name=f"{container_base}-2",
+                                        local_conf=get_env('REPLICA_CLUSTER_CONF'),
                                         hbase_ui_port=replica_port,
                                         cluster_name="Read-Replica Cluster")
 

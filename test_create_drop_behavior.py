@@ -103,9 +103,11 @@ if __name__ == "__main__":
     column_family = "cf"
 
     active_cluster = HBaseDockerClient(container_name=container_name,
+                                       local_conf=get_env('ACTIVE_CLUSTER_CONF'),
                                        hbase_ui_port=get_env('ACTIVE_CLUSTER_PORT'),
                                        cluster_name="Active Cluster")
     replica_cluster = HBaseDockerClient(container_name=f"{container_name}-2",
+                                        local_conf=get_env('REPLICA_CLUSTER_CONF'),
                                         hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                         cluster_name="Read-Replica Cluster")
     try:

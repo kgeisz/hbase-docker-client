@@ -21,14 +21,14 @@ class HBaseShellCommandError(Exception):
 
 
 class HBaseDockerClient:
-    def __init__(self, container_name, hbase_ui_port=16010, cluster_name="HBase Cluster",
-                 max_retries=12, sleep_time=5, local_conf='conf/hbase-site.xml'):
+    def __init__(self, container_name, local_conf, hbase_ui_port=16010, cluster_name="HBase Cluster",
+                 max_retries=12, sleep_time=5):
         self._container_name = container_name
+        self._local_conf = local_conf
         self._hbase_ui_port = hbase_ui_port
         self._cluster_name = cluster_name
         self._max_retries = max_retries
         self._sleep_time = sleep_time
-        self._local_conf = local_conf
 
     @property
     def name(self):
