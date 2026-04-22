@@ -38,7 +38,7 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    iterations = 1
+    iterations = 10
     for i in range(1, iterations+1):
         logger.info(f"----- Iteration {i} -----")
         try:
@@ -118,5 +118,6 @@ if __name__ == '__main__':
                             f"{cluster2.name} as expected ***")
             else:
                 raise RuntimeError(f"Expected an AssertionError to occur with "
-                                   f"the following message:\n{expected_msg}")
+                                   f"the following message:\n{expected_msg}\n"
+                                   f"Got the following instead:\n{str(e)}")
         logger.info(f"Finished iteration {i} of {iterations}")
