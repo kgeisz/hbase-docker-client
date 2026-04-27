@@ -37,7 +37,11 @@ clean up this directory before starting the containers.
 ```
 % rm -rf ./tmp && docker compose -f $HOME/hbase-docker-client/docker-compose.yml up -d
 ```
-4. Run a script:
+5. Add the repo to your `PYTHONPATH`:
 ```
-python3 ./verify_hbase_start.py
+% export PYTHONPATH=$HOME/hbase-docker-client
+```
+4. Run a script from inside the `hbase-docker-client` repo:
+```
+python3 ./python/scripts/verify_hbase_start.py
 ```

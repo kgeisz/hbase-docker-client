@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from dotenv import load_dotenv
-from environment_loader import get_env
-from hbase_docker_client import HBaseDockerClient
-from logger_config import get_logger
+from python.src.environment_loader import get_env
+from python.src.hbase_docker_client import HBaseDockerClient
+from python.src.logger_config import get_logger
 
 logger = get_logger(__name__)
 

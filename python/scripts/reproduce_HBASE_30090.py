@@ -15,9 +15,9 @@ in one run.
 Usage: python3 reproduce_HBASE_30090.py
 """
 from dotenv import load_dotenv
-from environment_loader import get_env
-from hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
-from logger_config import get_logger
+from python.src.environment_loader import get_env
+from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
+from python.src.logger_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    iterations = 10
+    iterations = 1
     for i in range(1, iterations+1):
         logger.info(f"----- Iteration {i} -----")
         try:

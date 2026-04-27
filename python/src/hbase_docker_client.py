@@ -7,7 +7,7 @@ import time
 import xml.etree.ElementTree as ET
 import requests
 
-from logger_config import get_logger
+from .logger_config import get_logger
 
 logger = get_logger(__name__)
 

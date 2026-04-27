@@ -2,7 +2,7 @@ import logging
 import sys
 
 from dotenv import load_dotenv
-from environment_loader import get_env
+from .environment_loader import get_env
 
 LOG_FORMAT = '%(asctime)s %(levelname)-5s %(module)s.%(funcName)s(%(lineno)d): %(message)s'
 
