@@ -51,12 +51,10 @@ if __name__ == '__main__':
             cluster1.flush('t1')
 
             # Refresh replica cluster to get this table
-            assert not cluster2.verify_table_exists('t1'), \
-                f"Expected 't1' to not exist on {cluster2.name}"
+            cluster2.assert_table_does_not_exist('t1')
             cluster2.refresh_meta()
             cluster2.refresh_hfiles()
-            assert cluster2.verify_table_exists('t1'), \
-                f"Expected table 't1' to exist on {cluster2.name}"
+            cluster2.assert_table_exists('t1')
             cluster2.verify_table_row_count('t1', 1)
 
             # Make active cluster read-only adn verify it cannot create a table or put data

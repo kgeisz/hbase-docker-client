@@ -141,9 +141,15 @@ class HBaseDockerClient:
         match = re.search(pattern, output)
         return ast.literal_eval(match.group(0))
 
-    def verify_table_exists(self, table_name):
+    def assert_table_does_not_exist(self, table_name):
+        logger.debug(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
+        assert table_name not in self.list_tables(), \
+            f"Expected table '{table_name}' to not exist on {self.name}"
+
+    def assert_table_exists(self, table_name):
         logger.debug(f"Verifying '{table_name}' is in the list of tables on {self.name}")
-        return table_name in self.list_tables()
+        assert table_name in self.list_tables(), \
+            f"Expected table '{table_name}' to exist on {self.name}"
 
     def get_hbase_status(self):
         logger.debug(f"Getting status of {self.name}")

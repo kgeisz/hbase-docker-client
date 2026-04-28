@@ -22,28 +22,20 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
     # Read-Replica cluster should not see the newly created table yet
     logger.info(f"Verifying {active_cluster.name} now has table '{table_name}', "
                 f"while {replica_cluster.name} cluster does not")
-    assert active_cluster.verify_table_exists(table_name), \
-        f"Expected table '{table_name}' to exist on {active_cluster.name}"
-    assert not replica_cluster.verify_table_exists(table_name), \
-        f"Table '{table_name}' should not exist on {replica_cluster.name}"
+    active_cluster.assert_table_exists(table_name)
+    replica_cluster.assert_table_does_not_exist(table_name)
 
     # Read-Replica cluster should now see the newly created table
     replica_cluster.refresh_meta()
     logger.info(f"Verifying {replica_cluster.name} has table '{table_name}' after refreshing meta")
-    assert replica_cluster.verify_table_exists(table_name), \
-        (f"Expected table '{table_name}' to exist on {replica_cluster.name} "
-         f"after running refresh_meta")
-    assert active_cluster.verify_table_exists(table_name), \
-        (f"Expected table '{table_name}' to exist on {active_cluster.name} "
-         f"after running refresh_meta")
+    replica_cluster.assert_table_exists(table_name)
+    active_cluster.assert_table_exists(table_name)
 
     # Cannot drop the table on the Read-Replica cluster. A DoNotRetryIOException should occur
     replica_cluster.disable_table(table_name)
     replica_cluster.verify_read_only_error_occurs('drop', table_name, column_family)
     # The table should still exist on the read-replica cluster since drops are not allowed
-    assert replica_cluster.verify_table_exists(table_name), \
-        (f"Expected table '{table_name}' to still exist on {replica_cluster.name} "
-         f"after drop attempt")
+    replica_cluster.assert_table_exists(table_name)
 
     # Drop the table on the active cluster
     active_cluster.disable_table(table_name)
@@ -52,19 +44,14 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
     # The read-replica cluster should still have the table that was dropped on the active
     # cluster since 'refresh_meta' has not been run yet.
     logger.info(f"Verifying {replica_cluster.name} still has table '{table_name}'")
-    assert not active_cluster.verify_table_exists(table_name), \
-        f"Expected table '{table_name}' to have been dropped on {active_cluster.name}"
-    assert replica_cluster.verify_table_exists(table_name), \
-        (f"Table '{table_name}' should still exist on {replica_cluster.name} "
-         f"since 'refresh_meta' has not been run again")
+    active_cluster.assert_table_does_not_exist(table_name)
+    replica_cluster.assert_table_exists(table_name)
 
     # The read-replica cluster no longer has the dropped table after running 'refresh_meta'.
     logger.info(f"Verifying {replica_cluster.name} no longer has table '{table_name}' after "
                 f"refreshing meta")
     replica_cluster.refresh_meta()
-    assert not replica_cluster.verify_table_exists(table_name), \
-        (f"Expected table '{table_name}' no longer exist on {replica_cluster.name} "
-         f"after running 'refresh_meta'")
+    replica_cluster.assert_table_does_not_exist(table_name)
 
 
 def verify_invalid_read_only_command_occurs(replica_cluster, cmd_type, table_name, column_family):
