@@ -16,7 +16,7 @@ Usage: python3 reproduce_HBASE_30090.py
 """
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
-from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
+from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             cluster2.assert_table_exists('t1')
             cluster2.verify_table_row_count('t1', 1)
 
-            # Make active cluster read-only adn verify it cannot create a table or put data
+            # Make active cluster read-only and verify it cannot create a table or put data
             cluster1.enable_read_only_mode()
             cluster1.verify_read_only_error_occurs('create', 't1', column_family)
             cluster1.verify_read_only_error_occurs(

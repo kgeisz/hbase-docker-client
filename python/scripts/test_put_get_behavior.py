@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import logging
-
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
@@ -30,7 +28,7 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     active_cluster.flush(table_name)
 
     # Refresh meta and HFiles, and verify the read-replica cluster now sees the data
-    logging.info(f"Refreshing meta and HFiles on {replica_cluster.name}")
+    logger.info(f"Refreshing meta and HFiles on {replica_cluster.name}")
     replica_cluster.refresh_meta()
     replica_cluster.refresh_hfiles()
     logger.info(f"Verifying '{table_name}' on {replica_cluster} has data after refreshing HFiles")
