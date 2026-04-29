@@ -34,6 +34,38 @@ class HBaseDockerClient:
     def name(self):
         return self._cluster_name
 
+    def run_docker_exec_command(self, bash_cmd):
+        """
+        Uses 'docker exec' to run the provided Bash command in the object's Docker container.
+        The command looks like: docker exec <container> bash -c <bash_cmd>
+        Note: In the Terminal, we usually put double quotes around everything after "-c",
+        but doing that with subprocess.run() results in a failure.
+        """
+        cmd = ["docker", "exec", self._container_name, "bash", "-c", f'''{bash_cmd}''']
+        cmd_str = ' '.join(cmd)
+        logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
+        process = subprocess.run(cmd, capture_output=True)
+        stdout = process.stdout.decode('utf-8')
+        if process.returncode != 0:
+            raise DockerExecCommandError(
+                f"The following command failed on {self._cluster_name} ({self._container_name}): {bash_cmd}\n"
+                f"The command used to run this was: {cmd_str}\n"
+                f"The command's STDERR was:\n{process.stderr.decode('utf-8')}\n"
+                f"The command's STDOUT was:\n{stdout}\n"
+            )
+        return stdout
+
+    def run_hbase_shell_command(self, hbase_cmd):
+        """
+        Uses 'docker exec' to run the provided HBase shell command in the object's Docker container.
+        The command looks like: docker exec <container> bash -c hbase shell -n <<< "<hbase_cmd>"
+        """
+        hbase_shell_cmd = f'''hbase shell -n <<< "{hbase_cmd}"'''
+        try:
+            return self.run_docker_exec_command(hbase_shell_cmd)
+        except DockerExecCommandError as e:
+            raise HBaseShellCommandError(e)
+
     def wait_for_hbase_ui(self):
         """Checks for a 200 OK on the HBase Master UI."""
         url = f"http://localhost:{self._hbase_ui_port}"
@@ -89,37 +121,9 @@ class HBaseDockerClient:
         raise RuntimeError(
             f"\nTIMEOUT: {self._cluster_name} shell check failed after {self._max_retries} attempts.")
 
-    def run_docker_exec_command(self, bash_cmd):
-        """
-        Uses 'docker exec' to run the provided Bash command in the object's Docker container.
-        The command looks like: docker exec <container> bash -c <bash_cmd>
-        Note: In the Terminal, we usually put double quotes around everything after "-c",
-        but doing that with subprocess.run() results in a failure.
-        """
-        cmd = ["docker", "exec", self._container_name, "bash", "-c", f'''{bash_cmd}''']
-        cmd_str = ' '.join(cmd)
-        logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
-        process = subprocess.run(cmd, capture_output=True)
-        stdout = process.stdout.decode('utf-8')
-        if process.returncode != 0:
-            raise DockerExecCommandError(
-                f"The following command failed on {self._cluster_name} ({self._container_name}): {bash_cmd}\n"
-                f"The command used to run this was: {cmd_str}\n"
-                f"The command's STDERR was:\n{process.stderr.decode('utf-8')}\n"
-                f"The command's STDOUT was:\n{stdout}\n"
-            )
-        return stdout
-
-    def run_hbase_shell_command(self, hbase_cmd):
-        """
-        Uses 'docker exec' to run the provided HBase shell command in the object's Docker container.
-        The command looks like: docker exec <container> bash -c hbase shell -n <<< "<hbase_cmd>"
-        """
-        hbase_shell_cmd = f'''hbase shell -n <<< "{hbase_cmd}"'''
-        try:
-            return self.run_docker_exec_command(hbase_shell_cmd)
-        except DockerExecCommandError as e:
-            raise HBaseShellCommandError(e)
+    def get_hbase_status(self):
+        logger.debug(f"Getting status of {self.name}")
+        return self.run_hbase_shell_command("status")
 
     def create_table(self, table_name, column_family):
         logger.info(f"Creating table '{table_name}' on {self._cluster_name}")
@@ -131,28 +135,6 @@ class HBaseDockerClient:
             return False
         return True
 
-    def list_tables(self):
-        """Gets the list of HBase tables and returns it as a Python list"""
-        logger.debug(f"Getting the list of tables in HBase on {self.name}")
-        pattern = r'\[(.*?)\]'
-        output = self.run_hbase_shell_command("list")
-        match = re.search(pattern, output)
-        return ast.literal_eval(match.group(0))
-
-    def assert_table_does_not_exist(self, table_name):
-        logger.debug(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
-        assert table_name not in self.list_tables(), \
-            f"Expected table '{table_name}' to not exist on {self.name}"
-
-    def assert_table_exists(self, table_name):
-        logger.debug(f"Verifying '{table_name}' is in the list of tables on {self.name}")
-        assert table_name in self.list_tables(), \
-            f"Expected table '{table_name}' to exist on {self.name}"
-
-    def get_hbase_status(self):
-        logger.debug(f"Getting status of {self.name}")
-        return self.run_hbase_shell_command("status")
-
     def disable_table(self, table_name):
         logger.debug(f"Disabling table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"disable '{table_name}'")
@@ -160,6 +142,14 @@ class HBaseDockerClient:
     def drop_table(self, table_name):
         logger.info(f"Dropping table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"drop '{table_name}'")
+
+    def list_tables(self):
+        """Gets the list of HBase tables and returns it as a Python list"""
+        logger.debug(f"Getting the list of tables in HBase on {self.name}")
+        pattern = r'\[(.*?)\]'
+        output = self.run_hbase_shell_command("list")
+        match = re.search(pattern, output)
+        return ast.literal_eval(match.group(0))
 
     def put(self, table_name, row, column, data, spec_map=None):
         """
@@ -213,15 +203,6 @@ class HBaseDockerClient:
             count_cmd += f"{spec}"
         return self.run_hbase_shell_command(count_cmd)
 
-    def verify_table_row_count(self, table_name, expected_row_count):
-        logger.info(f"Verifying table '{table_name}' on {self.name} has {expected_row_count} row(s)")
-        output = self.count(table_name)
-        split_output = output.split('\n')
-        actual_row_count = split_output[1]
-        assert actual_row_count == f"{expected_row_count} row(s)" in output, \
-            (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
-             f"Instead got {actual_row_count}")
-
     def flush(self, table_name):
         logger.debug(f"Flushing table '{table_name}'")
         self.run_hbase_shell_command(f"flush '{table_name}'")
@@ -233,23 +214,6 @@ class HBaseDockerClient:
     def refresh_hfiles(self):
         logger.debug(f"Refreshing HFiles on {self.name}")
         self.run_hbase_shell_command("refresh_hfiles")
-
-    def update_all_config(self):
-        logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
-        self.run_hbase_shell_command("update_all_config")
-
-    def __set_read_only_mode_in_local_conf(self, value):
-        """Sets hbase.global.readonly.enabled to a new value in a local hbase-site.xml file"""
-        tree = ET.parse(self._local_conf)
-        root = tree.getroot()
-        for prop in root.findall('property'):
-            name_elem = prop.find('name')
-            if name_elem is not None and name_elem.text == 'hbase.global.readonly.enabled':
-                value_elem = prop.find('value')
-                if value_elem is not None:
-                    value_elem.text = str(value)
-                    break
-        tree.write(self._local_conf, encoding='utf-8', xml_declaration=True)
 
     def enable_read_only_mode(self):
         """
@@ -271,7 +235,24 @@ class HBaseDockerClient:
         self.__set_read_only_mode_in_local_conf('false')
         self.update_all_config()
 
-    def verify_read_only_error_occurs(self, cmd_type, table_name, column,
+    def update_all_config(self):
+        logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
+        self.run_hbase_shell_command("update_all_config")
+
+    def __set_read_only_mode_in_local_conf(self, value):
+        """Sets hbase.global.readonly.enabled to a new value in a local hbase-site.xml file"""
+        tree = ET.parse(self._local_conf)
+        root = tree.getroot()
+        for prop in root.findall('property'):
+            name_elem = prop.find('name')
+            if name_elem is not None and name_elem.text == 'hbase.global.readonly.enabled':
+                value_elem = prop.find('value')
+                if value_elem is not None:
+                    value_elem.text = str(value)
+                    break
+        tree.write(self._local_conf, encoding='utf-8', xml_declaration=True)
+
+    def assert_read_only_error_occurs(self, cmd_type, table_name, column,
                                       row=None, data=None):
         """
         Runs a command on read-only cluster and expects an error to occur as a result.
@@ -304,6 +285,25 @@ class HBaseDockerClient:
                                               f"{expected_error}\n"
                                               f"The actual exception was:\n{e}")
         logger.info(f"{cmd_type.capitalize()} attempt on {self.name} failed as expected")
+
+    def assert_table_does_not_exist(self, table_name):
+        logger.debug(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
+        assert table_name not in self.list_tables(), \
+            f"Expected table '{table_name}' to not exist on {self.name}"
+
+    def assert_table_exists(self, table_name):
+        logger.debug(f"Verifying '{table_name}' is in the list of tables on {self.name}")
+        assert table_name in self.list_tables(), \
+            f"Expected table '{table_name}' to exist on {self.name}"
+
+    def assert_table_row_count(self, table_name, expected_row_count):
+        logger.info(f"Verifying table '{table_name}' on {self.name} has {expected_row_count} row(s)")
+        output = self.count(table_name)
+        split_output = output.split('\n')
+        actual_row_count = split_output[1]
+        assert actual_row_count == f"{expected_row_count} row(s)" in output, \
+            (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
+             f"Instead got {actual_row_count}")
 
     @staticmethod
     def clean_up_tables(active_cluster, replica_cluster):

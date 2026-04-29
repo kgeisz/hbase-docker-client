@@ -55,12 +55,12 @@ if __name__ == '__main__':
             cluster2.refresh_meta()
             cluster2.refresh_hfiles()
             cluster2.assert_table_exists('t1')
-            cluster2.verify_table_row_count('t1', 1)
+            cluster2.assert_table_row_count('t1', 1)
 
             # Make active cluster read-only and verify it cannot create a table or put data
             cluster1.enable_read_only_mode()
-            cluster1.verify_read_only_error_occurs('create', 't1', column_family)
-            cluster1.verify_read_only_error_occurs(
+            cluster1.assert_read_only_error_occurs('create', 't1', column_family)
+            cluster1.assert_read_only_error_occurs(
                 'put', 't1', column_family, row='r2', data='2')
 
             # Make replica cluster active and add a new table and new data
@@ -74,13 +74,13 @@ if __name__ == '__main__':
             # Refresh the new replica cluster and verify it has this data
             cluster1.refresh_meta()
             cluster1.refresh_hfiles()
-            cluster1.verify_table_row_count('t1', 2)
-            cluster1.verify_table_row_count('t2', 1)
+            cluster1.assert_table_row_count('t1', 2)
+            cluster1.assert_table_row_count('t2', 1)
 
             # Make the original replica cluster read-only again
             cluster2.enable_read_only_mode()
-            cluster2.verify_read_only_error_occurs('create', 't3', column_family)
-            cluster2.verify_read_only_error_occurs(
+            cluster2.assert_read_only_error_occurs('create', 't3', column_family)
+            cluster2.assert_read_only_error_occurs(
                 'put', 't1', column_family, row='r3', data='3')
 
             # Make the original active cluster able to perform writes again
@@ -96,16 +96,16 @@ if __name__ == '__main__':
             # Refresh original replica cluster that is now back into read-only mode
             cluster2.refresh_meta()
             cluster2.refresh_hfiles()
-            cluster2.verify_read_only_error_occurs('create', 't4', column_family)
-            cluster2.verify_read_only_error_occurs(
+            cluster2.assert_read_only_error_occurs('create', 't4', column_family)
+            cluster2.assert_read_only_error_occurs(
                 'put', 't1', column_family, 'r4', '4')
-            cluster2.verify_read_only_error_occurs(
+            cluster2.assert_read_only_error_occurs(
                 'put', 't2', column_family, 'r3', '3')
-            cluster2.verify_read_only_error_occurs(
+            cluster2.assert_read_only_error_occurs(
                 'put', 't3', column_family, 'r2', '2')
-            cluster2.verify_table_row_count('t1', 3)
-            cluster2.verify_table_row_count('t2', 2)
-            cluster2.verify_table_row_count('t3', 1)
+            cluster2.assert_table_row_count('t1', 3)
+            cluster2.assert_table_row_count('t2', 2)
+            cluster2.assert_table_row_count('t3', 1)
             raise RuntimeError(f"Expected an AssertionError due to bad row count on "
                                f"{cluster2.name} to have occurred by now")
         except AssertionError as e:

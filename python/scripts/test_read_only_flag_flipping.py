@@ -33,10 +33,17 @@ def refresh_replica_and_verify_tables(replica_cluster, new_table, tables):
     replica_cluster.refresh_hfiles()
     replica_cluster.assert_table_exists(new_table)
     for i, table in enumerate(tables[::-1], 1):
-        cluster2.verify_table_row_count(table, i)
+        cluster2.assert_table_row_count(table, i)
 
 
-def test_active_and_replica_clusters(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient):
+def create_table_and_test_active_and_replica_clusters(active_cluster: HBaseDockerClient,
+                                                      replica_cluster: HBaseDockerClient):
+    """
+    Creates a new table and iteratively adds data to each existing table, including the new one.
+    Also verifies expected behavior for the replica cluster, such as verifying the new table is not
+    on the replica before refreshing meta, and then verify new table and data existence after
+    refreshing meta and HFiles.
+    """
     new_table = create_table_on_active_cluster(active_cluster)
 
     # The new table should not exist on the replica cluster before refreshing meta
@@ -50,8 +57,8 @@ def test_active_and_replica_clusters(active_cluster: HBaseDockerClient, replica_
 def flip_read_only_flag(new_active_cluster, new_replica_cluster):
     # Make cluster read-only and verify it cannot create a table or put data
     new_replica_cluster.enable_read_only_mode()
-    new_replica_cluster.verify_read_only_error_occurs('create', 't1', COLUMN_FAMILY)
-    new_replica_cluster.verify_read_only_error_occurs(
+    new_replica_cluster.assert_read_only_error_occurs('create', 't1', COLUMN_FAMILY)
+    new_replica_cluster.assert_read_only_error_occurs(
         'put', 't1', COLUMN_FAMILY, row='r2', data='2')
 
     # Make cluster active
@@ -80,9 +87,9 @@ if __name__ == '__main__':
         cluster2.enable_read_only_mode()
         HBaseDockerClient.clean_up_tables(cluster1, cluster2)
 
-        test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
+        create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
         flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
-        test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
+        create_table_and_test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
         flip_read_only_flag(new_active_cluster=cluster1, new_replica_cluster=cluster2)
         # This next line is commented out to prevent HBASE-30090
         # test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
