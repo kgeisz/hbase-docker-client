@@ -2,10 +2,10 @@
 import ast
 import logging
 import re
+import requests
 import subprocess
 import time
 import xml.etree.ElementTree as ET
-import requests
 
 from .logger_config import get_logger
 
@@ -16,7 +16,7 @@ class DockerExecCommandError(Exception):
     pass
 
 
-class HBaseShellCommandError(Exception):
+class HBaseShellCommandError(DockerExecCommandError):
     pass
 
 
@@ -89,44 +89,42 @@ class HBaseDockerClient:
         raise RuntimeError(
             f"\nTIMEOUT: {self._cluster_name} shell check failed after {self._max_retries} attempts.")
 
-    def __run_command(self, bash_cmd):
+    def run_docker_exec_command(self, bash_cmd):
+        """
+        Uses 'docker exec' to run the provided Bash command in the object's Docker container.
+        The command looks like: docker exec <container> bash -c <bash_cmd>
+        Note: In the Terminal, we usually put double quotes around everything after "-c",
+        but doing that with subprocess.run() results in a failure.
+        """
         cmd = ["docker", "exec", self._container_name, "bash", "-c", f'''{bash_cmd}''']
         cmd_str = ' '.join(cmd)
         logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
         process = subprocess.run(cmd, capture_output=True)
         stdout = process.stdout.decode('utf-8')
         if process.returncode != 0:
-            raise DockerExecCommandError(f"The following docker exec command failed on "
-                                         f"{self._cluster_name} ({self._container_name}): "
-                                         f"{bash_cmd}\nThe docker command used to run this was: "
-                                         f"{cmd_str}\nThe command's STDERR was:"
-                                         f"\n{process.stderr.decode('utf-8')}\n"
-                                         f"The command's STDOUT was:\n{stdout}\n")
+            raise DockerExecCommandError(
+                f"The following command failed on {self._cluster_name} ({self._container_name}): {bash_cmd}\n"
+                f"The command used to run this was: {cmd_str}\n"
+                f"The command's STDERR was:\n{process.stderr.decode('utf-8')}\n"
+                f"The command's STDOUT was:\n{stdout}\n"
+            )
         return stdout
 
-    def __run_hbase_command(self, hbase_cmd):
-        # In the Terminal, we usually put double quotes around everything after "-c", but doing that
-        # with subprocess.run() results in a failure.
-        cmd = ["docker", "exec", self._container_name, "bash", "-c",
-               f'''hbase shell -n <<< "{hbase_cmd}"''']
-        cmd_str = ' '.join(cmd)
-
-        logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
-        process = subprocess.run(cmd, capture_output=True)
-        stdout = process.stdout.decode('utf-8')
-        if process.returncode != 0:
-            raise HBaseShellCommandError(f"The following HBase shell command failed on the "
-                                         f"{self._cluster_name} ({self._container_name}): "
-                                         f"{hbase_cmd}\nThe docker command used to run this was: "
-                                         f"{cmd_str}\nThe shell command's STDERR was:"
-                                         f"\n{process.stderr.decode('utf-8')}\n"
-                                         f"The shell command's STDOUT was:\n{stdout}\n")
-        return stdout
+    def run_hbase_shell_command(self, hbase_cmd):
+        """
+        Uses 'docker exec' to run the provided HBase shell command in the object's Docker container.
+        The command looks like: docker exec <container> bash -c hbase shell -n <<< "<hbase_cmd>"
+        """
+        hbase_shell_cmd = f'''hbase shell -n <<< "{hbase_cmd}"'''
+        try:
+            return self.run_docker_exec_command(hbase_shell_cmd)
+        except DockerExecCommandError as e:
+            raise HBaseShellCommandError(e)
 
     def create_table(self, table_name, column_family):
         logger.info(f"Creating table '{table_name}' on {self._cluster_name}")
         create_cmd = f"create '{table_name}', '{column_family}'"
-        output = self.__run_hbase_command(create_cmd)
+        output = self.run_hbase_shell_command(create_cmd)
 
         if f"Created table {table_name}" not in output:
             logger.error(f"Could not create table '{table_name}' on {self._cluster_name}")
@@ -137,7 +135,7 @@ class HBaseDockerClient:
         """Gets the list of HBase tables and returns it as a Python list"""
         logger.debug(f"Getting the list of tables in HBase on {self.name}")
         pattern = r'\[(.*?)\]'
-        output = self.__run_hbase_command("list")
+        output = self.run_hbase_shell_command("list")
         match = re.search(pattern, output)
         return ast.literal_eval(match.group(0))
 
@@ -153,15 +151,15 @@ class HBaseDockerClient:
 
     def get_hbase_status(self):
         logger.debug(f"Getting status of {self.name}")
-        return self.__run_hbase_command("status")
+        return self.run_hbase_shell_command("status")
 
     def disable_table(self, table_name):
         logger.debug(f"Disabling table '{table_name}' on {self.name}")
-        self.__run_hbase_command(f"disable '{table_name}'")
+        self.run_hbase_shell_command(f"disable '{table_name}'")
 
     def drop_table(self, table_name):
         logger.info(f"Dropping table '{table_name}' on {self.name}")
-        self.__run_hbase_command(f"drop '{table_name}'")
+        self.run_hbase_shell_command(f"drop '{table_name}'")
 
     def put(self, table_name, row, column, data, spec_map=None):
         """
@@ -177,7 +175,7 @@ class HBaseDockerClient:
         put_cmd = f"put '{table_name}', '{row}', '{column}', '{data}'"
         if spec_map:
             put_cmd += f", {spec_map}"
-        self.__run_hbase_command(put_cmd)
+        self.run_hbase_shell_command(put_cmd)
 
     def get(self, table_name, row, column=None, spec_map=None):
         logger.info(f"Getting data from table '{table_name}' on {self.name}")
@@ -186,7 +184,7 @@ class HBaseDockerClient:
             get_cmd += f", '{column}'"
         if spec_map:
             get_cmd += f", {spec_map}"
-        output = self.__run_hbase_command(get_cmd)
+        output = self.run_hbase_shell_command(get_cmd)
         logger.debug(f"Got data:\n{output}")
         return output
 
@@ -197,7 +195,7 @@ class HBaseDockerClient:
             delete_cmd += f", {table_name}"
         if spec_map:
             delete_cmd += f", {spec_map}"
-        self.__run_hbase_command(delete_cmd)
+        self.run_hbase_shell_command(delete_cmd)
 
     def scan(self, table_name, spec_map=None):
         log_msg = f"Scanning table '{table_name}' on {self.name}"
@@ -206,14 +204,14 @@ class HBaseDockerClient:
             scan_cmd += f", {spec_map}"
             log_msg += f" with spec_map {spec_map}"
         logging.info(log_msg)
-        return self.__run_hbase_command(scan_cmd)
+        return self.run_hbase_shell_command(scan_cmd)
 
     def count(self, table_name, spec=None):
         logger.info(f"Counting rows for table '{table_name}' on {self.name}")
         count_cmd = f"count '{table_name}'"
         if spec:
             count_cmd += f"{spec}"
-        return self.__run_hbase_command(count_cmd)
+        return self.run_hbase_shell_command(count_cmd)
 
     def verify_table_row_count(self, table_name, expected_row_count):
         logger.info(f"Verifying table '{table_name}' on {self.name} has {expected_row_count} row(s)")
@@ -226,19 +224,19 @@ class HBaseDockerClient:
 
     def flush(self, table_name):
         logger.debug(f"Flushing table '{table_name}'")
-        self.__run_hbase_command(f"flush '{table_name}'")
+        self.run_hbase_shell_command(f"flush '{table_name}'")
 
     def refresh_meta(self):
         logger.debug(f"Refreshing meta on {self.name}")
-        self.__run_hbase_command("refresh_meta")
+        self.run_hbase_shell_command("refresh_meta")
 
     def refresh_hfiles(self):
         logger.debug(f"Refreshing HFiles on {self.name}")
-        self.__run_hbase_command("refresh_hfiles")
+        self.run_hbase_shell_command("refresh_hfiles")
 
     def update_all_config(self):
         logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
-        self.__run_hbase_command("update_all_config")
+        self.run_hbase_shell_command("update_all_config")
 
     def __set_read_only_mode_in_local_conf(self, value):
         """Sets hbase.global.readonly.enabled to a new value in a local hbase-site.xml file"""

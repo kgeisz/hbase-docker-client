@@ -31,7 +31,7 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     logger.info(f"Refreshing meta and HFiles on {replica_cluster.name}")
     replica_cluster.refresh_meta()
     replica_cluster.refresh_hfiles()
-    logger.info(f"Verifying '{table_name}' on {replica_cluster} has data after refreshing HFiles")
+    logger.info(f"Verifying '{table_name}' on {replica_cluster.name} has data after refreshing HFiles")
     replica_cluster.verify_table_row_count(table_name, 1)
 
     # Verify data cannot be added to the table on the read-replica cluster
