@@ -222,7 +222,7 @@ class HBaseDockerClient:
         in the docker-compose file, which allows the config file within the docker container to be updated as well.
         """
         logger.info(f"Enabling read-only mode on {self.name}")
-        self.__set_read_only_mode_in_local_conf('true')
+        self.set_hbase_conf_property_value('hbase.global.readonly.enabled', 'true')
         self.update_all_config()
 
     def disable_read_only_mode(self):
@@ -232,20 +232,28 @@ class HBaseDockerClient:
         in the docker-compose file, which allows the config file within the docker container to be updated as well.
         """
         logger.info(f"Disabling read-only mode on {self.name}")
-        self.__set_read_only_mode_in_local_conf('false')
+        self.set_hbase_conf_property_value('hbase.global.readonly.enabled', 'false')
         self.update_all_config()
 
     def update_all_config(self):
         logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
         self.run_hbase_shell_command("update_all_config")
 
-    def __set_read_only_mode_in_local_conf(self, value):
+    def get_hbase_conf_property_value(self, conf_prop):
+        tree = ET.parse(self._local_conf)
+        root = tree.getroot()
+        for prop in root.findall('property'):
+            name_elem = prop.find('name')
+            if name_elem is not None and name_elem.text == conf_prop:
+                return prop.find('value').text
+
+    def set_hbase_conf_property_value(self, conf_prop, value):
         """Sets hbase.global.readonly.enabled to a new value in a local hbase-site.xml file"""
         tree = ET.parse(self._local_conf)
         root = tree.getroot()
         for prop in root.findall('property'):
             name_elem = prop.find('name')
-            if name_elem is not None and name_elem.text == 'hbase.global.readonly.enabled':
+            if name_elem is not None and name_elem.text == conf_prop:
                 value_elem = prop.find('value')
                 if value_elem is not None:
                     value_elem.text = str(value)
