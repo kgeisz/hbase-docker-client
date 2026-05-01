@@ -259,6 +259,8 @@ class HBaseDockerClient:
                     value_elem.text = str(value)
                     break
         tree.write(self._local_conf, encoding='utf-8', xml_declaration=True)
+        # The conf file is a Docker volume - wait for the updated version to sync
+        time.sleep(1)
 
     def assert_read_only_error_occurs(self, cmd_type, table_name, column,
                                       row=None, data=None):

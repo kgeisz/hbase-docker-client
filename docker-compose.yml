@@ -10,7 +10,7 @@ services:
       - ${ACTIVE_CLUSTER_PORT}:16010 # Master UI
     volumes:
       - ./utils:/opt/utils
-      - ./tmp/data-store/hbase:/data-store/hbase
+      - ${HBASE_DATA_STORE_ROOT}/data-store/hbase:/data-store/hbase
       - ${ACTIVE_CLUSTER_CONF}:${HBASE_CONF_DIR}/hbase-site.xml
       - ./conf1/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
       - ./conf1/log4j2.properties:${HBASE_CONF_DIR}/log4j2.properties
@@ -23,7 +23,7 @@ services:
       - ${REPLICA_CLUSTER_PORT}:16010 # Master UI
     volumes:
       - ./utils:/opt/utils
-      - ./tmp/data-store/hbase:/data-store/hbase
+      - ${HBASE_DATA_STORE_ROOT}/data-store/hbase:/data-store/hbase
       - ${REPLICA_CLUSTER_CONF}:${HBASE_CONF_DIR}/hbase-site.xml
       - ./conf2/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
       - ./conf2/log4j2.properties:${HBASE_CONF_DIR}/log4j2.properties
