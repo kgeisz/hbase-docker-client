@@ -30,11 +30,11 @@ if __name__ == '__main__':
     column_family = "cf"
 
     cluster1 = HBaseDockerClient(container_name=container_name,
-                                 local_conf=get_env('ACTIVE_CLUSTER_CONF'),
+                                 local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
                                  hbase_ui_port=get_env('ACTIVE_CLUSTER_PORT'),
                                  cluster_name="Cluster 1")
     cluster2 = HBaseDockerClient(container_name=f'{container_name}-2',
-                                 local_conf=get_env('REPLICA_CLUSTER_CONF'),
+                                 local_conf=f"{get_env('REPLICA_CLUSTER_CONF_DIR')}/hbase-site.xml",
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
