@@ -277,7 +277,7 @@ class HBaseDockerClient:
                 case 'drop':
                     self.drop_table(table_name)
                 case 'put':
-                    self.put(table_name, column, row, data)
+                    self.put(table_name, row, column, data)
                 case 'delete':
                     self.delete(table_name, row, column)
                 case _:
