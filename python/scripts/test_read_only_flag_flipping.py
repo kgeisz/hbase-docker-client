@@ -63,7 +63,7 @@ def flip_read_only_flag(new_active_cluster: HBaseDockerClient,
                         new_replica_cluster: HBaseDockerClient):
     # Make cluster read-only and verify it cannot create a table or put data
     new_replica_cluster.enable_read_only_mode()
-    new_replica_cluster.assert_read_only_error_occurs('create', 't1', COLUMN_FAMILY)
+    new_replica_cluster.assert_read_only_error_occurs('create', 'testTable', COLUMN_FAMILY)
     new_replica_cluster.assert_read_only_error_occurs(
         'put', 't1', COLUMN_FAMILY, row='r2', data='2')
 
@@ -121,20 +121,33 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    iterations = 1
+    iterations = 5
     for i in range(1, iterations+1):
         logger.info(f"----- Iteration {i} -----")
-        # Create table on active cluster
-        cluster1.disable_read_only_mode()
+        logger.info(f"Ensuring clusters are in proper modes. "
+                    f"Making both clusters a replica, and then making {cluster1.name} the active cluster")
+        cluster1.enable_read_only_mode()
         cluster2.enable_read_only_mode()
+        cluster1.disable_read_only_mode()
+
+        # Create table on active cluster
         HBaseDockerClient.clean_up_tables(cluster1, cluster2)
 
         create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
         flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
         assert_correct_active_cluster_suffix(cluster2, data_store_root)
+
         create_table_and_test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
         flip_read_only_flag(new_active_cluster=cluster1, new_replica_cluster=cluster2)
         assert_correct_active_cluster_suffix(cluster1, data_store_root)
-        # This next line is commented out to prevent HBASE-30090
-        # create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
+
+        # If this line runs properly, then HBASE-30090 has been fixed
+        create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
+        flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
+        assert_correct_active_cluster_suffix(cluster2, data_store_root)
+
+        create_table_and_test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
+        flip_read_only_flag(new_active_cluster=cluster1, new_replica_cluster=cluster2)
+        assert_correct_active_cluster_suffix(cluster1, data_store_root)
+
         logger.info(f"Finished iteration {i} of {iterations}")
