@@ -55,6 +55,9 @@ def create_table_and_test_active_and_replica_clusters(active_cluster: HBaseDocke
     replica_cluster.assert_table_does_not_exist(new_table)
 
     tables = active_cluster.list_tables()
+    # HBase sorts table list by string: ['t1', 't10', 't2, ..., 't9']
+    # We want the list sorted by creation time, so we're sorting on the integer: ['t1', 't2, ..., 't9', 't10']
+    tables.sort(key=lambda x: int(x[1:]))
     add_data_to_each_table_on_active_cluster(active_cluster, tables)
     refresh_replica_and_verify_tables(replica_cluster, new_table, tables)
 
@@ -106,6 +109,12 @@ def assert_correct_active_cluster_suffix(cluster: HBaseDockerClient, data_store_
                                               f"but got '{actual_suffix}' instead")
 
 
+def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, data_store_root):
+    create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
+    flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
+    assert_correct_active_cluster_suffix(cluster2, data_store_root)
+
+
 if __name__ == '__main__':
     # Load settings from .env file
     load_dotenv()
@@ -133,21 +142,29 @@ if __name__ == '__main__':
         # Create table on active cluster
         HBaseDockerClient.clean_up_tables(cluster1, cluster2)
 
-        create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
-        flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
-        assert_correct_active_cluster_suffix(cluster2, data_store_root)
+    test_iterations = 3
+    read_only_flag_flips_per_iteration = 6
+    for i in range(1, test_iterations + 1):
+        logger.info(f"---------- Iteration {i} ----------")
+        logger.info(f"Ensuring clusters are in proper modes. "
+                    f"Making both clusters a replica, and then making {cluster1.name} the active cluster")
+        cluster1.enable_read_only_mode()
+        cluster2.enable_read_only_mode()
+        cluster1.disable_read_only_mode()
 
-        create_table_and_test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
-        flip_read_only_flag(new_active_cluster=cluster1, new_replica_cluster=cluster2)
-        assert_correct_active_cluster_suffix(cluster1, data_store_root)
+        # Create table on active cluster
+        HBaseDockerClient.clean_up_tables(cluster1, cluster2)
 
-        # If this line runs properly, then HBASE-30090 has been fixed
-        create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
-        flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
-        assert_correct_active_cluster_suffix(cluster2, data_store_root)
-
-        create_table_and_test_active_and_replica_clusters(active_cluster=cluster2, replica_cluster=cluster1)
-        flip_read_only_flag(new_active_cluster=cluster1, new_replica_cluster=cluster2)
-        assert_correct_active_cluster_suffix(cluster1, data_store_root)
-
-        logger.info(f"Finished iteration {i} of {iterations}")
+        # One iteration flips the read-only flag on each cluster and then flips it back.
+        flip_num = 1
+        while flip_num <= read_only_flag_flips_per_iteration:
+            logger.info(f"*** Testing read-only flag flip number {flip_num} ***")
+            if flip_num % 2 == 1:
+                # Cluster 1 is active and Cluster 2 is replica
+                create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, data_store_root)
+            else:
+                # Cluster 2 is active and Cluster 1 is replica
+                create_table_and_test_clusters_then_flip_read_only_flag(cluster2, cluster1, data_store_root)
+            logger.info(f"Finished read-only flag flip {flip_num} of {read_only_flag_flips_per_iteration}")
+            flip_num += 1
+        logger.info(f"Finished iteration {i} of {test_iterations}")
