@@ -148,6 +148,7 @@ class HBaseDockerClient:
         logger.debug(f"Getting the list of tables in HBase on {self.name}")
         pattern = r'\[(.*?)\]'
         output = self.run_hbase_shell_command("list")
+        output = output.replace('\n', ' ')
         match = re.search(pattern, output)
         return ast.literal_eval(match.group(0))
 
