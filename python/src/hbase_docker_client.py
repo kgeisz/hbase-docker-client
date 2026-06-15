@@ -86,8 +86,10 @@ class HBaseDockerClient:
                            f"{self._max_retries} attempts. "
                            f"Last raised exception was: {last_exception}")
 
-    def check_server_status(self):
+    def check_server_status(self, desired_status: dict = None):
         """Runs 'status' inside the HBase shell and validates the output."""
+        if desired_status is None:
+            desired_status = {'masters': '1', 'region_servers': '1', 'dead_servers': '0'}
         logger.info(f"Validating Cluster Status: {self._cluster_name} ({self._container_name})")
         for attempt in range(1, self._max_retries + 1):
             try:
@@ -96,9 +98,9 @@ class HBaseDockerClient:
                 # The cluster's status should have 1 active master, 1 region server,
                 # and no dead servers
                 validations = {
-                    "Active Master": "1 active master" in output,
-                    "Region Server": "1 servers" in output,
-                    "No Dead Servers": "0 dead" in output
+                    "Active Master": f"{desired_status['masters']} active master" in output,
+                    "Region Server": f"{desired_status['region_servers']} servers" in output,
+                    "No Dead Servers": f"{desired_status['dead_servers']} dead" in output
                 }
 
                 if all(validations.values()):
@@ -124,6 +126,11 @@ class HBaseDockerClient:
     def get_hbase_status(self):
         logger.debug(f"Getting status of {self.name}")
         return self.run_hbase_shell_command("status")
+
+    def wait_for_cluster_to_start(self):
+        """curls the cluster's HBase UI to make sure it is up and then makes sure all desired servers are up"""
+        self.wait_for_hbase_ui()
+        self.check_server_status()
 
     def create_table(self, table_name, column_family):
         logger.info(f"Creating table '{table_name}' on {self._cluster_name}")
@@ -315,6 +322,14 @@ class HBaseDockerClient:
         assert actual_row_count == f"{expected_row_count} row(s)" in output, \
             (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
              f"Instead got {actual_row_count}")
+
+    @staticmethod
+    def wait_for_clusters_to_start(clusters: list):
+        for cluster in clusters:
+            cluster.wait_for_cluster_to_start()
+        logger.info("=" * 40)
+        logger.info("ALL CLUSTERS VERIFIED AND READY")
+        logger.info("=" * 40)
 
     @staticmethod
     def clean_up_tables(active_cluster, replica_cluster):

@@ -23,12 +23,4 @@ if __name__ == "__main__":
                                         hbase_ui_port=replica_port,
                                         cluster_name="Read-Replica Cluster")
 
-    active_cluster.wait_for_hbase_ui()
-    active_cluster.check_server_status()
-
-    replica_cluster.wait_for_hbase_ui()
-    replica_cluster.check_server_status()
-
-    logger.info("=" * 40)
-    logger.info("ALL CLUSTERS VERIFIED AND READY")
-    logger.info("=" * 40)
+    HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
