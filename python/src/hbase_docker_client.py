@@ -332,6 +332,33 @@ class HBaseDockerClient:
         logger.info("=" * 40)
 
     @staticmethod
+    def are_containers_running() -> bool:
+        result = subprocess.run(
+            ["docker", "compose", "ps", "--status", "running", "-q"],
+            capture_output=True,
+            text=True
+        )
+        return bool(result.stdout.strip())
+
+    @staticmethod
+    def start_or_restart_containers():
+        if HBaseDockerClient.are_containers_running():
+            command = ["docker", "compose", "restart"]
+            action = "restart"
+        else:
+            command = ["docker", "compose", "up", "-d"]
+            action = "start"
+
+        logger.info(f"Running 'docker compose {action}' for both containers")
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"docker compose {action} failed (exit {result.returncode}):\n"
+                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+            )
+        logger.info(f"docker compose {action} completed successfully")
+
+    @staticmethod
     def clean_up_tables(active_cluster, replica_cluster):
         """
         Drops all tables on the active cluster and then runs 'refresh_meta' on the

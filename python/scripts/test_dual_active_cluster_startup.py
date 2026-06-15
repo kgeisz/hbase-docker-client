@@ -29,33 +29,6 @@ def set_readonly_disabled(cluster: HBaseDockerClient):
     )
 
 
-def are_containers_running() -> bool:
-    result = subprocess.run(
-        ["docker", "compose", "ps", "--status", "running", "-q"],
-        capture_output=True,
-        text=True
-    )
-    return bool(result.stdout.strip())
-
-
-def start_or_restart_containers():
-    if are_containers_running():
-        command = ["docker", "compose", "restart"]
-        action = "restart"
-    else:
-        command = ["docker", "compose", "up", "-d"]
-        action = "start"
-
-    logger.info(f"Running 'docker compose {action}' for both containers")
-    result = subprocess.run(command, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"docker compose {action} failed (exit {result.returncode}):\n"
-            f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-        )
-    logger.info(f"docker compose {action} completed successfully")
-
-
 def is_process_running(cluster: HBaseDockerClient, process_name: str) -> bool:
     output = cluster.run_docker_exec_command("jps")
     return process_name in output
@@ -98,7 +71,7 @@ if __name__ == '__main__':
     set_readonly_disabled(cluster2)
 
     # Start or restart containers so both attempt to start as active
-    start_or_restart_containers()
+    HBaseDockerClient.start_or_restart_containers()
 
     # Wait for HBase to attempt startup on both containers
     logger.info(f"Waiting {STARTUP_WAIT_SECONDS}s for clusters to attempt startup...")
