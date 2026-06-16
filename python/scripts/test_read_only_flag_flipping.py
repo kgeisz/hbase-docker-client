@@ -38,7 +38,7 @@ def refresh_replica_and_verify_tables(replica_cluster: HBaseDockerClient, new_ta
     replica_cluster.refresh_hfiles()
     replica_cluster.assert_table_exists(new_table)
     for i, table in enumerate(tables[::-1], 1):
-        cluster2.assert_table_row_count(table, i)
+        replica_cluster.assert_table_row_count(table, i)
 
 
 def create_table_and_test_active_and_replica_clusters(active_cluster: HBaseDockerClient,
