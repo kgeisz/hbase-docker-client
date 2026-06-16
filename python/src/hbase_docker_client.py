@@ -229,14 +229,7 @@ class HBaseDockerClient:
         to dynamically update the configuration. This method assumes the hbase-site.xml file is a mounted volume
         in the docker-compose file, which allows the config file within the docker container to be updated as well.
         """
-        self._log_enable_or_disable_read_only_mode('enabling', run_update_all_config)
-        self.set_hbase_conf_property_value('hbase.global.readonly.enabled', 'true')
-        actual = self.get_hbase_conf_property_value('hbase.global.readonly.enabled')
-        assert actual == 'true', (
-            f"Expected hbase.global.readonly.enabled=true on {self.name}, got '{actual}'"
-        )
-        if run_update_all_config:
-            self.update_all_config()
+        self._set_read_only_mode(new_read_only_flag=True, run_update_all_config=run_update_all_config)
 
     def disable_read_only_mode(self, run_update_all_config=True):
         """
@@ -244,21 +237,21 @@ class HBaseDockerClient:
         to dynamically update the configuration. This method assumes the hbase-site.xml file is a mounted volume
         in the docker-compose file, which allows the config file within the docker container to be updated as well.
         """
-        self._log_enable_or_disable_read_only_mode('disabling', run_update_all_config)
-        self.set_hbase_conf_property_value('hbase.global.readonly.enabled', 'false')
+        self._set_read_only_mode(new_read_only_flag=False, run_update_all_config=run_update_all_config)
+
+    def _set_read_only_mode(self, new_read_only_flag: bool, run_update_all_config=True):
+        if new_read_only_flag:
+            logger.info(f"Enabling read-only mode in conf for {self.name} and then running update_all_config after")
+        else:
+            logger.info(f"Disabling read-only mode in conf for {self.name} but not running update_all_config after")
+        new_read_only_flag = str(new_read_only_flag).lower()
+        self.set_hbase_conf_property_value('hbase.global.readonly.enabled', new_read_only_flag)
         actual = self.get_hbase_conf_property_value('hbase.global.readonly.enabled')
-        assert actual == 'false', (
-            f"Expected hbase.global.readonly.enabled=false on {self.name}, got '{actual}'"
+        assert actual == new_read_only_flag, (
+            f"Expected hbase.global.readonly.enabled={new_read_only_flag} on {self.name}, but got '{actual}'"
         )
         if run_update_all_config:
             self.update_all_config()
-
-    def _log_enable_or_disable_read_only_mode(self, action: str, run_update_all_config: bool):
-        if run_update_all_config:
-            msg = "and running update_all_config after"
-        else:
-            msg = "but not running update_all_config after"
-        logger.info(f"{action.capitalize()} read-only mode in conf for {self.name} {msg}")
 
     def update_all_config(self):
         logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
