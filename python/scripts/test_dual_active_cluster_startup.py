@@ -20,15 +20,6 @@ STARTUP_WAIT_SECONDS = 60
 EXPECTED_ERROR_MSG = "Another cluster is running in active (read-write) mode on this storage location"
 
 
-def set_readonly_disabled(cluster: HBaseDockerClient):
-    logger.info(f"Setting hbase.global.readonly.enabled=false on {cluster.name}")
-    cluster.set_hbase_conf_property_value('hbase.global.readonly.enabled', 'false')
-    actual = cluster.get_hbase_conf_property_value('hbase.global.readonly.enabled')
-    assert actual == 'false', (
-        f"Expected hbase.global.readonly.enabled=false on {cluster.name}, got '{actual}'"
-    )
-
-
 def is_process_running(cluster: HBaseDockerClient, process_name: str) -> bool:
     output = cluster.run_docker_exec_command("jps")
     return process_name in output
@@ -67,8 +58,8 @@ if __name__ == '__main__':
                                  cluster_name="Cluster 2")
 
     # Set both clusters to active mode (read-only disabled)
-    set_readonly_disabled(cluster1)
-    set_readonly_disabled(cluster2)
+    cluster1.disable_read_only_mode(run_update_all_config=False)
+    cluster2.disable_read_only_mode(run_update_all_config=False)
 
     # Start or restart containers so both attempt to start as active
     HBaseDockerClient.start_or_restart_containers()
