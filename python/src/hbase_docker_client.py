@@ -369,6 +369,18 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
+    def stop_containers(data_dir):
+        command = f"docker compose down && rm -rf {data_dir}"
+        logger.info(f"Running '{command}'")
+        result = subprocess.run(command, capture_output=True, text=True, shell=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"stop_containers failed (exit {result.returncode}):\n"
+                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+            )
+        logger.info("stop_containers completed successfully")
+
+    @staticmethod
     def clean_up_tables(active_cluster, replica_cluster):
         """
         Drops all tables on the active cluster and then runs 'refresh_meta' on the
