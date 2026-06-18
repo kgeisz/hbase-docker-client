@@ -240,10 +240,11 @@ class HBaseDockerClient:
         self._set_read_only_mode(new_read_only_flag=False, run_update_all_config=run_update_all_config)
 
     def _set_read_only_mode(self, new_read_only_flag: bool, run_update_all_config=True):
-        if new_read_only_flag:
-            logger.info(f"Enabling read-only mode in conf for {self.name} and then running update_all_config after")
-        else:
-            logger.info(f"Disabling read-only mode in conf for {self.name} but not running update_all_config after")
+        action = "Enabling" if new_read_only_flag else "Disabling"
+        conjunction_adverb = "and then" if run_update_all_config else "but not"
+        logger.info(f"{action} read-only mode in conf for {self.name} "
+                    f"{conjunction_adverb} running update_all_config after")
+
         new_read_only_flag = str(new_read_only_flag).lower()
         self.set_hbase_conf_property_value('hbase.global.readonly.enabled', new_read_only_flag)
         actual = self.get_hbase_conf_property_value('hbase.global.readonly.enabled')
@@ -353,13 +354,15 @@ class HBaseDockerClient:
     @staticmethod
     def start_or_restart_containers():
         if HBaseDockerClient.are_containers_running():
+            logger.info("Restarting docker containers")
             command = ["docker", "compose", "restart"]
             action = "restart"
         else:
+            logger.info("Starting docker containers")
             command = ["docker", "compose", "up", "-d"]
             action = "start"
 
-        logger.info(f"Running 'docker compose {action}' for both containers")
+        logger.info(f"Running: {' '.join(command)}")
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(
@@ -369,16 +372,21 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
-    def stop_containers(data_dir):
-        command = f"docker compose down && rm -rf {data_dir}"
-        logger.info(f"Running '{command}'")
+    def stop_containers(data_dir=None):
+        command = "docker compose down"
+        log_msg = "Stopping docker containers"
+        if data_dir:
+            command += f" && rm -rf {data_dir}"
+            log_msg += f" and deleting HBase data root dir at: {data_dir}"
+        logger.info(f"{log_msg}")
+        logger.info(f"Running: '{command}'")
         result = subprocess.run(command, capture_output=True, text=True, shell=True)
         if result.returncode != 0:
             raise RuntimeError(
                 f"stop_containers failed (exit {result.returncode}):\n"
                 f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
             )
-        logger.info("stop_containers completed successfully")
+        logger.info("Successfully stopped docker containers")
 
     @staticmethod
     def clean_up_tables(active_cluster, replica_cluster):
