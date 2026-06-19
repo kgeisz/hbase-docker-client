@@ -47,6 +47,7 @@ def assert_error_in_master_log(cluster: HBaseDockerClient):
 if __name__ == '__main__':
     load_dotenv()
     container_name = get_env("HBASE_CONTAINER_NAME")
+    data_store_root = get_env("HBASE_DATA_STORE_ROOT")
 
     cluster1 = HBaseDockerClient(container_name=container_name,
                                  local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
@@ -57,42 +58,50 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    # Set both clusters to active mode (read-only disabled)
-    cluster1.disable_read_only_mode(run_update_all_config=False)
-    cluster2.disable_read_only_mode(run_update_all_config=False)
+    test_iterations = 3
+    for i in range(1, test_iterations+1):
+        logger.info(f"---------- Iteration {i} ----------")
 
-    # Start or restart containers so both attempt to start as active
-    HBaseDockerClient.start_or_restart_containers()
+        HBaseDockerClient.stop_containers(data_store_root)
 
-    # Wait for HBase to attempt startup on both containers
-    logger.info(f"Waiting {STARTUP_WAIT_SECONDS}s for clusters to attempt startup...")
-    time.sleep(STARTUP_WAIT_SECONDS)
+        # Set both clusters to active mode (read-only disabled)
+        cluster1.disable_read_only_mode(run_update_all_config=False)
+        cluster2.disable_read_only_mode(run_update_all_config=False)
 
-    # Determine which cluster failed
-    logger.info("Checking HBase processes on both clusters")
-    cluster1_running = check_cluster_processes(cluster1)
-    cluster2_running = check_cluster_processes(cluster2)
+        # Start or restart containers so both attempt to start as active
+        HBaseDockerClient.start_or_restart_containers()
 
-    if cluster1_running and not cluster2_running:
-        failed_cluster = cluster2
-        running_cluster = cluster1
-    elif cluster2_running and not cluster1_running:
-        failed_cluster = cluster1
-        running_cluster = cluster2
-    elif not cluster1_running and not cluster2_running:
-        raise RuntimeError("Both clusters appear to be down — this is unexpected")
-    else:
-        raise RuntimeError(
-            "Both clusters appear to be running — the test expects exactly one to have failed. "
-            "This may indicate the clusters are using separate data stores or the feature is not working."
-        )
+        # Wait for HBase to attempt startup on both containers
+        logger.info(f"Waiting {STARTUP_WAIT_SECONDS}s for clusters to attempt startup...")
+        time.sleep(STARTUP_WAIT_SECONDS)
 
-    logger.info(f"[PASS] {running_cluster.name} is running as the active cluster")
-    logger.info(f"[PASS] {failed_cluster.name} failed to start (HMaster is down)")
+        # Determine which cluster failed
+        logger.info("Checking HBase processes on both clusters")
+        cluster1_running = check_cluster_processes(cluster1)
+        cluster2_running = check_cluster_processes(cluster2)
 
-    # Verify the failed cluster's master log contains the expected error
-    assert_error_in_master_log(failed_cluster)
+        if cluster1_running and not cluster2_running:
+            failed_cluster = cluster2
+            running_cluster = cluster1
+        elif cluster2_running and not cluster1_running:
+            failed_cluster = cluster1
+            running_cluster = cluster2
+        elif not cluster1_running and not cluster2_running:
+            raise RuntimeError("Both clusters appear to be down — this is unexpected")
+        else:
+            raise RuntimeError(
+                "Both clusters appear to be running — the test expects exactly one to have failed. "
+                "This may indicate the clusters are using separate data stores or the feature is not working."
+            )
 
-    logger.info("=" * 60)
-    logger.info("TEST PASSED: Dual active cluster startup correctly rejected")
-    logger.info("=" * 60)
+        logger.info(f"[PASS] {running_cluster.name} is running as the active cluster")
+        logger.info(f"[PASS] {failed_cluster.name} failed to start (HMaster is down)")
+
+        # Verify the failed cluster's master log contains the expected error
+        assert_error_in_master_log(failed_cluster)
+
+        logger.info(f"Finished iteration {i} of {test_iterations}")
+
+    logger.info("=" * 70)
+    logger.info("TEST PASSED: All dual active cluster startups were correctly rejected")
+    logger.info("=" * 70)
