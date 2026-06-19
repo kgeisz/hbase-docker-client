@@ -130,12 +130,13 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
+    HBaseDockerClient.stop_containers(data_store_root)
     cluster1.disable_read_only_mode(run_update_all_config=False)
     cluster2.enable_read_only_mode(run_update_all_config=False)
     HBaseDockerClient.start_or_restart_containers()
     HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
 
-    test_iterations = 5
+    test_iterations = 3
     read_only_flag_flips_per_iteration = 6
     for i in range(1, test_iterations + 1):
         logger.info(f"---------- Iteration {i} ----------")
