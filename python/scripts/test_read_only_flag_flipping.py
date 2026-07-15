@@ -130,7 +130,7 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    HBaseDockerClient.stop_containers(data_store_root)
+    HBaseDockerClient.stop_containers(f'data_store_root/*')
     cluster1.disable_read_only_mode(run_update_all_config=False)
     cluster2.enable_read_only_mode(run_update_all_config=False)
     HBaseDockerClient.start_or_restart_containers()
