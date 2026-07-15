@@ -378,14 +378,15 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
-    def stop_containers(data_dir=None, docker_compose_file=None):
+    def stop_containers(docker_compose_file=None, data_dir=None, sudo=False):
         command = "docker compose"
         if docker_compose_file:
             command += f" -f {docker_compose_file}"
         command += " down"
         log_msg = "Stopping docker containers"
         if data_dir:
-            command += f" && rm -rf {data_dir}"
+            rm_cmd = "sudo rm -rf" if sudo else "rm -rf"
+            command += f" && {rm_cmd} {data_dir}"
             log_msg += f" and deleting HBase data root dir at: {data_dir}"
         logger.info(f"{log_msg}")
         logger.info(f"Running: '{command}'")
