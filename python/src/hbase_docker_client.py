@@ -343,23 +343,29 @@ class HBaseDockerClient:
         logger.info("=" * 40)
 
     @staticmethod
-    def are_containers_running() -> bool:
-        result = subprocess.run(
-            ["docker", "compose", "ps", "--status", "running", "-q"],
-            capture_output=True,
-            text=True
-        )
+    def are_containers_running(docker_compose_file=None) -> bool:
+        command = ["docker", "compose"]
+        if docker_compose_file:
+            command += ["-f", docker_compose_file]
+        command += ["ps", "--status", "running", "-q"]
+        result = subprocess.run(command, capture_output=True, text=True)
         return bool(result.stdout.strip())
 
     @staticmethod
-    def start_or_restart_containers():
-        if HBaseDockerClient.are_containers_running():
+    def start_or_restart_containers(docker_compose_file=None):
+        if HBaseDockerClient.are_containers_running(docker_compose_file):
             logger.info("Restarting docker containers")
-            command = ["docker", "compose", "restart"]
+            command = ["docker", "compose"]
+            if docker_compose_file:
+                command += ["-f", docker_compose_file]
+            command += ["restart"]
             action = "restart"
         else:
             logger.info("Starting docker containers")
-            command = ["docker", "compose", "up", "-d"]
+            command = ["docker", "compose"]
+            if docker_compose_file:
+                command += ["-f", docker_compose_file]
+            command += ["up", "-d"]
             action = "start"
 
         logger.info(f"Running: {' '.join(command)}")
@@ -372,8 +378,11 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
-    def stop_containers(data_dir=None):
-        command = "docker compose down"
+    def stop_containers(data_dir=None, docker_compose_file=None):
+        command = "docker compose"
+        if docker_compose_file:
+            command += f" -f {docker_compose_file}"
+        command += " down"
         log_msg = "Stopping docker containers"
         if data_dir:
             command += f" && rm -rf {data_dir}"

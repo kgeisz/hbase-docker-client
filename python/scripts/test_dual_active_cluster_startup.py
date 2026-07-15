@@ -48,6 +48,7 @@ if __name__ == '__main__':
     load_dotenv()
     container_name = get_env("HBASE_CONTAINER_NAME")
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
+    docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
 
     cluster1 = HBaseDockerClient(container_name=container_name,
                                  local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
@@ -62,14 +63,14 @@ if __name__ == '__main__':
     for i in range(1, test_iterations+1):
         logger.info(f"---------- Iteration {i} ----------")
 
-        HBaseDockerClient.stop_containers(f'data_store_root/*')
+        HBaseDockerClient.stop_containers(f'data_store_root/*', docker_compose_file=docker_compose_file)
 
         # Set both clusters to active mode (read-only disabled)
         cluster1.disable_read_only_mode(run_update_all_config=False)
         cluster2.disable_read_only_mode(run_update_all_config=False)
 
         # Start or restart containers so both attempt to start as active
-        HBaseDockerClient.start_or_restart_containers()
+        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file)
 
         # Wait for HBase to attempt startup on both containers
         logger.info(f"Waiting {STARTUP_WAIT_SECONDS}s for clusters to attempt startup...")
