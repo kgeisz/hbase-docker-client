@@ -70,7 +70,8 @@ if __name__ == '__main__':
         cluster2.disable_read_only_mode(run_update_all_config=False)
 
         # Start or restart containers so both attempt to start as active
-        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file)
+        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
+                                                      data_store_root=f'{data_store_root}')
 
         # Wait for HBase to attempt startup on both containers
         logger.info(f"Waiting {STARTUP_WAIT_SECONDS}s for clusters to attempt startup...")

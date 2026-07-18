@@ -134,7 +134,8 @@ if __name__ == '__main__':
     HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
     cluster1.disable_read_only_mode(run_update_all_config=False)
     cluster2.enable_read_only_mode(run_update_all_config=False)
-    HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file)
+    HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
+                                                  data_store_root=f'{data_store_root}')
     HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
 
     test_iterations = 3
