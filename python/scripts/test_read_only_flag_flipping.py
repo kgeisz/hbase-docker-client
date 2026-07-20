@@ -22,7 +22,7 @@ This test script verifies behavior for multiple bug fixes:
 """
 import argparse
 
-from python.src.utils import assert_correct_active_cluster_suffix, add_common_skip_table_cleanup_arg
+from python.src.utils import assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg
 
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
@@ -102,7 +102,7 @@ def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_table_cleanup_arg(parser)
+    parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
 
     if args.skip_container_start_or_restart:
