@@ -6,6 +6,7 @@ running, and an error logged to the master log.
 
 Usage: python3 ./python/scripts/test_dual_active_cluster_startup.py
 """
+import argparse
 import subprocess
 import time
 
@@ -46,6 +47,13 @@ def assert_error_in_master_log(cluster: HBaseDockerClient):
 
 if __name__ == '__main__':
     load_dotenv()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--clean-up-containers', action='store_true',
+                        help='Stop Docker containers and revert cluster configurations to one '
+                             'active cluster and one replica cluster after the test finishes')
+    args = parser.parse_args()
+
     container_name = get_env("HBASE_CONTAINER_NAME")
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
     docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
@@ -107,3 +115,10 @@ if __name__ == '__main__':
     logger.info("=" * 70)
     logger.info("TEST PASSED: All dual active cluster startups were correctly rejected")
     logger.info("=" * 70)
+
+    if args.clean_up_containers:
+        logger.info("Stopping Docker containers and reverting test environment to having "
+                    "one active cluster and one replica cluster")
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
+        cluster1.disable_read_only_mode(run_update_all_config=False)
+        cluster2.enable_read_only_mode(run_update_all_config=False)
