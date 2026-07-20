@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import time
 
@@ -116,6 +117,15 @@ def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, 
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--skip-container-start-or-restart', action='store_true')
+    args = parser.parse_args()
+
+    if args.skip_container_start_or_restart:
+        logger.info("Docker containers will NOT be started/restarted at the beginning of this test run")
+    else:
+        logger.info("Docker containers will be started/restarted at the beginning of this test run")
+
     # Load settings from .env file
     load_dotenv()
     container_name = get_env("HBASE_CONTAINER_NAME")
@@ -131,12 +141,14 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
+    if not args.skip_container_start_or_restart:
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
     cluster1.disable_read_only_mode(run_update_all_config=False)
     cluster2.enable_read_only_mode(run_update_all_config=False)
-    HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
-                                                  data_store_root=f'{data_store_root}')
-    HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
+    if not args.skip_container_start_or_restart:
+        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
+                                                      data_store_root=f'{data_store_root}')
+        HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
 
     test_iterations = 3
     read_only_flag_flips_per_iteration = 6
