@@ -118,7 +118,8 @@ def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--skip-container-start-or-restart', action='store_true')
+    parser.add_argument('-s', '--skip-container-start-or-restart', action='store_true',
+                        help='Skip stopping, starting, and waiting for the Docker containers to be ready')
     args = parser.parse_args()
 
     if args.skip_container_start_or_restart:
