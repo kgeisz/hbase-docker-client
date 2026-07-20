@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
 from python.src.logger_config import get_logger
-from python.src.utils import add_common_args
+from python.src.utils import add_common_skip_table_cleanup_arg
 
 logger = get_logger(__name__)
 
@@ -59,7 +59,7 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser = add_common_args(parser)
+    parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
 
     # Load settings from .env file

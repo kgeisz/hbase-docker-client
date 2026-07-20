@@ -15,12 +15,15 @@ https://issues.apache.org/jira/browse/HBASE-30220
 Before implementing the fix for HBASE-30220, a cluster could be promoted to from a replica cluster to an active cluster
 even when another active cluster already existed.
 """
+import argparse
+
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
 from python.src.logger_config import get_logger
 from python.scripts.test_read_only_flag_flipping import create_table_and_test_active_and_replica_clusters
-from python.src.utils import assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix
+from python.src.utils import (assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix,
+                              add_common_skip_table_cleanup_arg)
 from time import sleep
 
 logger = get_logger(__name__)
@@ -58,6 +61,15 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser = add_common_skip_table_cleanup_arg(parser)
+    args = parser.parse_args()
+
+    if args.skip_container_start_or_restart:
+        logger.info("Docker containers will NOT be started/restarted at the beginning of this test run")
+    else:
+        logger.info("Docker containers will be started/restarted at the beginning of this test run")
+
     # Load settings from .env file
     load_dotenv()
     container_name = get_env("HBASE_CONTAINER_NAME")
@@ -77,12 +89,17 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*', sudo=True)
+    if not args.skip_container_start_or_restart:
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
+
     cluster1.disable_read_only_mode(run_update_all_config=False)
     cluster2.enable_read_only_mode(run_update_all_config=False)
-    HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
-                                                  data_store_root=f'{data_store_root}')
-    HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
+
+    if not args.skip_container_start_or_restart:
+        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
+                                                      data_store_root=f'{data_store_root}')
+        HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
+
     assert_correct_active_cluster_suffix(cluster1, data_store_root)
     HBaseDockerClient.clean_up_tables(active_cluster=cluster1, replica_cluster=cluster2)
 
