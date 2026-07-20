@@ -1,4 +1,25 @@
 #!/usr/bin/env python3
+"""
+This test starts with two Read-Replica HBase clusters, where one cluster is the active cluster and the other cluster is
+the replica cluster. The test creates a table on the active cluster, adds data to the cluster, and verifies this data
+is consistent on the replica cluster after refreshing the meta HFiles. It also verifies write operations cannot be
+performed on the replica cluster. Then, the two clusters swap roles, where the active cluster becomes a replica and the
+former replica becomes the new active cluster. The previous steps then repeat in an iterative fashion.
+
+This test script verifies behavior for multiple bug fixes:
+
+1. HBASE-30090: Table on replica cluster not refreshing after flipping read-only flag twice
+   https://issues.apache.org/jira/browse/HBASE-30090
+
+   Before implementing this fix, an existing table on a read-replica cluster was not getting updated after making that
+   cluster the active cluster and then making it read-only again.
+
+2. HBASE-30180: Can still add data to read-only region after flipping read-only flag multiple times
+   https://issues.apache.org/jira/browse/HBASE-30180
+
+   Before implementing this fix, this cluster setup and series of steps would eventually get to a scenario where data
+   could be added to a table on cluster with read-only mode disabled.
+"""
 import argparse
 import os
 import time
