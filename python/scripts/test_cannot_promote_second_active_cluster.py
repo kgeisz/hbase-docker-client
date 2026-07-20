@@ -23,7 +23,7 @@ from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandE
 from python.src.logger_config import get_logger
 from python.scripts.test_read_only_flag_flipping import create_table_and_test_active_and_replica_clusters
 from python.src.utils import (assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix,
-                              add_common_skip_table_cleanup_arg)
+                              add_common_skip_container_stop_or_restart_arg)
 from time import sleep
 
 logger = get_logger(__name__)
@@ -62,7 +62,7 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_table_cleanup_arg(parser)
+    parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
 
     if args.skip_container_start_or_restart:
