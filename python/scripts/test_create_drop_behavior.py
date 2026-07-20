@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+import argparse
+
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
 from python.src.logger_config import get_logger
+from python.src.utils import add_common_args
 
 logger = get_logger(__name__)
 
@@ -55,6 +58,10 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser = add_common_args(parser)
+    args = parser.parse_args()
+
     # Load settings from .env file
     load_dotenv()
     container_name = get_env("HBASE_CONTAINER_NAME")
@@ -70,10 +77,11 @@ if __name__ == "__main__":
                                         hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                         cluster_name="Read-Replica Cluster")
     try:
-        # Delete any lingering tables
-        logger.info(f"Checking if table '{table_name}' already exists on {active_cluster.name} "
-                    f"and dropping it if necessary")
-        HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
+        if not args.skip_table_cleanup_on_start:
+            # Delete any lingering tables
+            logger.info(f"Checking if table '{table_name}' already exists on {active_cluster.name} "
+                        f"and dropping it if necessary")
+            HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
 
         test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)
     except (RuntimeError, HBaseShellCommandError, KeyboardInterrupt) as e:
