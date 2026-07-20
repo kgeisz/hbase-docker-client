@@ -373,9 +373,11 @@ class HBaseDockerClient:
         if data_store_root:
             command = ["mkdir", "-p", f"{data_store_root}/data-store/hbase", f"{data_store_root}/data-store/run",
                        f"{data_store_root}/data-store/logs", f"{data_store_root}/data-store/zk"]
-            HBaseDockerClient.__run_subprocess_command(command, "Failed to make data-store dir and its sub-dirs")
-            command = ["chmod", "-R", "777", f"{data_store_root}/data-store"]
-            HBaseDockerClient.__run_subprocess_command(command, "Failed to give data-store dir full permissions")
+            HBaseDockerClient.__run_subprocess_command(command,
+                                                       "Failed to create data-store dir and its sub-dirs")
+            command = ["chmod", "-R", "777", f"{data_store_root}"]
+            HBaseDockerClient.__run_subprocess_command(command,
+                                                       "Failed to give data-store root dir full permissions")
 
         if HBaseDockerClient.are_containers_running(docker_compose_file):
             logger.info("Restarting docker containers")
