@@ -21,10 +21,8 @@ This test script verifies behavior for multiple bug fixes:
    could be added to a table on cluster with read-only mode disabled.
 """
 import argparse
-import os
-import time
 
-import python.proto.generated.ActiveClusterSuffix_pb2 as acs
+from python.src.utils import assert_correct_active_cluster_suffix
 
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
@@ -94,41 +92,6 @@ def flip_read_only_flag(new_active_cluster: HBaseDockerClient,
 
     # Make cluster active
     new_active_cluster.disable_read_only_mode()
-
-
-def assert_correct_active_cluster_suffix(cluster: HBaseDockerClient, data_store_root: str):
-    logger.info(f"Verifying active cluster suffix file matches 'hbase.meta.table.suffix' "
-                f"in conf file for {cluster.name}")
-    active_cluster_file = f'{data_store_root}/data-store/hbase/active.cluster.suffix.id'
-    active_cluster_suffix = acs.ActiveClusterSuffix()
-
-    # The active cluster suffix file may not get created right away
-    retries = 0
-    while not os.path.exists(active_cluster_file):
-        if retries >= 5:
-            raise RuntimeError(f"Timed out waiting for active cluster file to exist: {active_cluster_file}")
-        logger.info(f"Waiting for active cluster file to exist: {active_cluster_file}")
-        time.sleep(1)
-        retries += 1
-
-    # Parse the active cluster suffix protobuf message file
-    with open(active_cluster_file, 'rb') as f:
-        data = f.read()
-        header = b'PBUF'
-        if data.startswith(header):
-            active_cluster_suffix.ParseFromString(data[len(header):])
-        else:
-            active_cluster_suffix.ParseFromString(data)
-        actual_suffix = active_cluster_suffix.suffix
-
-    # Assume the meta table suffix is blank if hbase.meta.table.suffix does not exist in HBase conf
-    expected_suffix = cluster.get_hbase_conf_property_value('hbase.meta.table.suffix')
-    if expected_suffix is None:
-        expected_suffix = ''
-
-    # Verify the active cluster suffix file has the expected meta table suffix
-    assert actual_suffix == expected_suffix, (f"Expected {cluster.name} to have meta table suffix '{expected_suffix}', "
-                                              f"but got '{actual_suffix}' instead")
 
 
 def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, data_store_root):

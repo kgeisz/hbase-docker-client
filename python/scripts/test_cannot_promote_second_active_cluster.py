@@ -19,9 +19,8 @@ from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
 from python.src.logger_config import get_logger
-from python.scripts.test_read_only_flag_flipping import (create_table_and_test_active_and_replica_clusters,
-                                                         assert_correct_active_cluster_suffix)
-from python.src.utils import assert_crud_operations_work_on_active_cluster
+from python.scripts.test_read_only_flag_flipping import create_table_and_test_active_and_replica_clusters
+from python.src.utils import assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix
 from time import sleep
 
 logger = get_logger(__name__)
