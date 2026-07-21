@@ -103,3 +103,21 @@ def assert_correct_active_cluster_suffix(cluster: HBaseDockerClient, data_store_
     # Verify the active cluster suffix file has the expected meta table suffix
     assert actual_suffix == expected_suffix, (f"Expected {cluster.name} to have meta table suffix '{expected_suffix}', "
                                               f"but got '{actual_suffix}' instead")
+
+
+def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient,
+                        skip_container_restart: bool, docker_compose_file: str, data_store_root: str):
+    """
+    Resets the Read-Replica cluster setup where one cluster is the active cluster (read-write mode) and the other
+    cluster is the replica cluster (read-only mode).
+    """
+    if not skip_container_restart:
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root)
+
+    active_cluster.disable_read_only_mode()
+    replica_cluster.enable_read_only_mode()
+
+    if not skip_container_restart:
+        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
+                                                      data_store_root=f'{data_store_root}')
+        HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
