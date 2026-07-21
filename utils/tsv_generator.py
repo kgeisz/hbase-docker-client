@@ -1,33 +1,32 @@
+import argparse
 import os
 import random
-import sys
 
-NUM_ROWS = 500 
 NUM_COLUMNS = 10
 
 
 def generate_data(row_key):
-    # Generate a row with NUM_COLUMNS columns of random integers
     columns = [str(random.randint(1, 100)) for _ in range(NUM_COLUMNS)]
     return f"{row_key}\t" + "\t".join(columns) + "\n"
 
 
-def main(output_dir):
+def main(output_dir, num_rows, initial_row_value):
     tsv_file = os.path.join(output_dir, "output.tsv")
 
-    # Write the TSV file
     with open(tsv_file, "w") as f:
-        for i in range(NUM_ROWS):
-            row_key = f"row{i}"  # Create a unique row key
+        for i in range(initial_row_value, num_rows):
+            row_key = f"row{i}"
             f.write(generate_data(row_key))
 
-    print(f"TSV file generated at {tsv_file} with {NUM_ROWS} rows and {NUM_COLUMNS} columns.")
+    rows_written = num_rows - initial_row_value
+    print(f"TSV file generated at {tsv_file} with {rows_written} rows and {NUM_COLUMNS} columns.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python tsv_generator.py <output_directory>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Generate a TSV file with random data for HBase bulk loading.")
+    parser.add_argument("output_directory", help="Directory to write the output TSV file")
+    parser.add_argument("-n", "--num-rows", type=int, default=500, help="Number of rows to generate (default: 500)")
+    parser.add_argument("-i", "--initial-row-value", type=int, default=0, help="Starting row number (default: 0)")
+    args = parser.parse_args()
 
-    output_directory = sys.argv[1]
-    main(output_directory)
+    main(args.output_directory, args.num_rows, args.initial_row_value)
