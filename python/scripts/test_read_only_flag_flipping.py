@@ -22,7 +22,8 @@ This test script verifies behavior for multiple bug fixes:
 """
 import argparse
 
-from python.src.utils import assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg
+from python.src.utils import (assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg,
+                              reset_cluster_setup)
 
 from dotenv import load_dotenv
 from python.src.environment_loader import get_env
@@ -105,7 +106,9 @@ if __name__ == '__main__':
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
 
-    if args.skip_container_start_or_restart:
+    skip_container_restart = args.skip_container_start_or_restart
+
+    if skip_container_restart:
         logger.info("Docker containers will NOT be started/restarted at the beginning of this test run")
     else:
         logger.info("Docker containers will be started/restarted at the beginning of this test run")
@@ -125,11 +128,9 @@ if __name__ == '__main__':
                                  hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
                                  cluster_name="Cluster 2")
 
-    if not args.skip_container_start_or_restart:
-        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
-
-    cluster1.disable_read_only_mode(run_update_all_config=False)
-    cluster2.enable_read_only_mode(run_update_all_config=False)
+    reset_cluster_setup(active_cluster=cluster1, replica_cluster=cluster2,
+                        skip_container_restart=skip_container_restart, docker_compose_file=docker_compose_file,
+                        data_store_root=data_store_root)
 
     if not args.skip_container_start_or_restart:
         HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
