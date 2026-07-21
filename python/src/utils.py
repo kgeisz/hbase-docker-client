@@ -133,8 +133,20 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
     if not skip_container_restart:
         HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root, sudo=sudo)
 
-    active_cluster.disable_read_only_mode(run_update_all_config=False)
-    replica_cluster.enable_read_only_mode(run_update_all_config=False)
+    # If the containers are still running, then we need to run update_all_config in the HBase shell to update
+    # read-only mode on each cluster. Otherwise, we can just modify the conf files and the containers will be restarted
+    # in the desired read-only mode.
+    if skip_container_restart:
+        run_update_all_config = True
+    else:
+        run_update_all_config = False
+
+    # First, make sure both clusters are read-only to prevent an error due to trying to have two active clusters
+    active_cluster.enable_read_only_mode(run_update_all_config=run_update_all_config)
+    replica_cluster.enable_read_only_mode(run_update_all_config=run_update_all_config)
+
+    # Now activate read-write mode on our active cluster
+    active_cluster.disable_read_only_mode(run_update_all_config=run_update_all_config)
 
     if not skip_container_restart:
         HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
