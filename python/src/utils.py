@@ -125,13 +125,13 @@ def assert_correct_active_cluster_suffix(cluster: HBaseDockerClient, data_store_
 
 
 def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient,
-                        skip_container_restart: bool, docker_compose_file: str, data_store_root: str):
+                        skip_container_restart: bool, docker_compose_file: str, data_store_root: str, sudo=False):
     """
     Resets the Read-Replica cluster setup where one cluster is the active cluster (read-write mode) and the other
     cluster is the replica cluster (read-only mode).
     """
     if not skip_container_restart:
-        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root)
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root, sudo=sudo)
 
     active_cluster.disable_read_only_mode(run_update_all_config=False)
     replica_cluster.enable_read_only_mode(run_update_all_config=False)
