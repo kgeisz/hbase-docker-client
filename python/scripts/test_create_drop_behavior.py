@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 
-from dotenv import load_dotenv
-from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
 from python.src.logger_config import get_logger
-from python.src.utils import add_common_skip_table_cleanup_arg
+from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
 
 logger = get_logger(__name__)
 
@@ -62,20 +60,10 @@ if __name__ == "__main__":
     parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
 
-    # Load settings from .env file
-    load_dotenv()
-    container_name = get_env("HBASE_CONTAINER_NAME")
+    active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
+                                                                  cluster2_name="Read-Replica Cluster")
     table_name = "t1"
     column_family = "cf"
-
-    active_cluster = HBaseDockerClient(container_name=container_name,
-                                       local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
-                                       hbase_ui_port=get_env('ACTIVE_CLUSTER_PORT'),
-                                       cluster_name="Active Cluster")
-    replica_cluster = HBaseDockerClient(container_name=f"{container_name}-2",
-                                        local_conf=f"{get_env('REPLICA_CLUSTER_CONF_DIR')}/hbase-site.xml",
-                                        hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
-                                        cluster_name="Read-Replica Cluster")
     try:
         if not args.skip_table_cleanup_on_start:
             # Delete any lingering tables

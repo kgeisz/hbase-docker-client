@@ -10,10 +10,10 @@ import argparse
 import subprocess
 import time
 
-from dotenv import load_dotenv
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
+from python.src.utils import load_env_and_set_up_clients
 
 logger = get_logger(__name__)
 
@@ -46,26 +46,15 @@ def assert_error_in_master_log(cluster: HBaseDockerClient):
 
 
 if __name__ == '__main__':
-    load_dotenv()
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--clean-up-containers', action='store_true',
                         help='Stop Docker containers and revert cluster configurations to one '
                              'active cluster and one replica cluster after the test finishes')
     args = parser.parse_args()
 
-    container_name = get_env("HBASE_CONTAINER_NAME")
+    cluster1, cluster2 = load_env_and_set_up_clients()
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
     docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
-
-    cluster1 = HBaseDockerClient(container_name=container_name,
-                                 local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
-                                 hbase_ui_port=get_env('ACTIVE_CLUSTER_PORT'),
-                                 cluster_name="Cluster 1")
-    cluster2 = HBaseDockerClient(container_name=f'{container_name}-2',
-                                 local_conf=f"{get_env('REPLICA_CLUSTER_CONF_DIR')}/hbase-site.xml",
-                                 hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
-                                 cluster_name="Cluster 2")
 
     test_iterations = 3
     for i in range(1, test_iterations+1):

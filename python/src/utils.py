@@ -4,8 +4,11 @@ import argparse
 import os
 import time
 
+from dotenv import load_dotenv
+
 import python.proto.generated.ActiveClusterSuffix_pb2 as acs
 
+from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
 
@@ -22,6 +25,22 @@ def add_common_skip_container_stop_or_restart_arg(parser: argparse.ArgumentParse
     parser.add_argument('-s', '--skip-container-start-or-restart', action='store_true',
                         help='Skip stopping, starting, and waiting for the Docker containers to be ready')
     return parser
+
+
+def load_env_and_set_up_clients(cluster1_name: str = "Cluster 1",
+                                cluster2_name: str = "Cluster 2") -> tuple[HBaseDockerClient, HBaseDockerClient]:
+    load_dotenv()
+    container_name = get_env("HBASE_CONTAINER_NAME")
+
+    active_cluster = HBaseDockerClient(container_name=container_name,
+                                       local_conf=f"{get_env('ACTIVE_CLUSTER_CONF_DIR')}/hbase-site.xml",
+                                       hbase_ui_port=get_env('ACTIVE_CLUSTER_PORT'),
+                                       cluster_name=cluster1_name)
+    replica_cluster = HBaseDockerClient(container_name=f'{container_name}-2',
+                                        local_conf=f"{get_env('REPLICA_CLUSTER_CONF_DIR')}/hbase-site.xml",
+                                        hbase_ui_port=get_env('REPLICA_CLUSTER_PORT'),
+                                        cluster_name=cluster2_name)
+    return active_cluster, replica_cluster
 
 
 def run_put_and_get(cluster: HBaseDockerClient, table: str, row: str, cf: str, data: str):
@@ -114,8 +133,8 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
     if not skip_container_restart:
         HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root)
 
-    active_cluster.disable_read_only_mode()
-    replica_cluster.enable_read_only_mode()
+    active_cluster.disable_read_only_mode(run_update_all_config=False)
+    replica_cluster.enable_read_only_mode(run_update_all_config=False)
 
     if not skip_container_restart:
         HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
