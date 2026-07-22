@@ -216,11 +216,11 @@ class HBaseDockerClient:
         self.run_hbase_shell_command(f"flush '{table_name}'")
 
     def refresh_meta(self):
-        logger.debug(f"Refreshing meta on {self.name}")
+        logger.info(f"Refreshing meta on {self.name}")
         self.run_hbase_shell_command("refresh_meta")
 
     def refresh_hfiles(self):
-        logger.debug(f"Refreshing HFiles on {self.name}")
+        logger.info(f"Refreshing HFiles on {self.name}")
         self.run_hbase_shell_command("refresh_hfiles")
 
     def enable_read_only_mode(self, run_update_all_config=True):
@@ -316,12 +316,12 @@ class HBaseDockerClient:
         logger.info(f"{cmd_type.capitalize()} attempt on {self.name} failed as expected")
 
     def assert_table_does_not_exist(self, table_name):
-        logger.debug(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
+        logger.info(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
         assert table_name not in self.list_tables(), \
             f"Expected table '{table_name}' to not exist on {self.name}"
 
     def assert_table_exists(self, table_name):
-        logger.debug(f"Verifying '{table_name}' is in the list of tables on {self.name}")
+        logger.info(f"Verifying '{table_name}' is in the list of tables on {self.name}")
         assert table_name in self.list_tables(), \
             f"Expected table '{table_name}' to exist on {self.name}"
 
