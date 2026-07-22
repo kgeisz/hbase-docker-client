@@ -328,9 +328,9 @@ class HBaseDockerClient:
     def assert_table_row_count(self, table_name, expected_row_count):
         logger.info(f"Verifying table '{table_name}' on {self.name} has {expected_row_count} row(s)")
         output = self.count(table_name)
-        split_output = output.split('\n')
-        actual_row_count = split_output[1]
-        assert actual_row_count == f"{expected_row_count} row(s)" in output, \
+        match = re.search(r'^(\d+) row\(s\)$', output, re.MULTILINE)
+        actual_row_count = int(match.group(1)) if match else None
+        assert actual_row_count == expected_row_count, \
             (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
              f"Instead got {actual_row_count}")
 
