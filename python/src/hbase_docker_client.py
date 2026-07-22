@@ -159,6 +159,11 @@ class HBaseDockerClient:
         match = re.search(pattern, output)
         return ast.literal_eval(match.group(0))
 
+    def list_regions(self, table_name):
+        """Gets list of regions and their info for the provided table"""
+        logger.info(f"Getting list of regions for table '{table_name}'")
+        return self.run_hbase_shell_command(f"list_regions '{table_name}'")
+
     def put(self, table_name, row, column, data, spec_map=None):
         """
         Performs an HBase put command.
@@ -214,6 +219,23 @@ class HBaseDockerClient:
     def flush(self, table_name):
         logger.debug(f"Flushing table '{table_name}'")
         self.run_hbase_shell_command(f"flush '{table_name}'")
+
+    def split(self, thing_to_split, split_key=None):
+        """
+        Flushes the table and triggers an asynchronous region split. Split the entire table or pass a region to split an
+        individual region. With the second parameter, you can specify an explicit split key for the region.
+
+        thing_to_split - TABLENAME, REGIONNAME, or ENCODED_REGIONNAME
+        split_key      - where to have the region split
+        """
+        logger.info(f"Flushing and triggering split on table '{thing_to_split}' on {self.name}")
+        self.flush(thing_to_split)
+
+        split_cmd = f"split '{thing_to_split}'"
+        if split_key:
+            split_cmd += f", '{split_key}'"
+
+        self.run_hbase_shell_command(split_cmd)
 
     def refresh_meta(self):
         logger.info(f"Refreshing meta on {self.name}")
@@ -333,6 +355,15 @@ class HBaseDockerClient:
         assert actual_row_count == expected_row_count, \
             (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
              f"Instead got {actual_row_count}")
+
+    def assert_region_count_for_table(self, table_name, expected_region_count):
+        logger.info(f"Verifying table '{table_name}' has {expected_region_count} region(s)")
+        output = self.list_regions(table_name)
+        match = re.search(r'^ (\d+) rows$', output, re.MULTILINE)
+        actual_region_count = int(match.group(1)) if match else None
+        assert actual_region_count == expected_region_count, \
+            (f"Expected table '{table_name}' on {self.name} to have {expected_region_count} region(s). "
+             f"Instead got {actual_region_count}")
 
     @staticmethod
     def __run_subprocess_command(command, error_msg, shell=False):
