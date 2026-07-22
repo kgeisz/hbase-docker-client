@@ -47,7 +47,7 @@ rm -rf /tmp/bulkload
 mkdir -p /tmp/bulkload/tsvdata
 
 # Generate TSV data and save to the specified directory
-python3 tsv_generator.py /tmp/bulkload/tsvdata $TSV_GENERATOR_ARGS
+python3 /opt/utils/tsv_generator.py /tmp/bulkload/tsvdata $TSV_GENERATOR_ARGS
 
 # Import TSV data to create HFiles for bulk loading
 hbase org.apache.hadoop.hbase.mapreduce.ImportTsv \
