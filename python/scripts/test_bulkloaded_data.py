@@ -4,12 +4,25 @@ This script tests bulk-loading data with Read-Replica HBase clusters.
 """
 import argparse
 
-from python.src import get_logger
+from python.src import get_logger, HBaseDockerClient
 from python.src.environment_loader import get_env
 from python.src.utils import (add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
                               load_env_and_set_up_clients)
 
 logger = get_logger(__name__)
+
+
+class Bulkloader:
+    def __init__(self, bulkload_script: str):
+        self.bulkload_script = bulkload_script
+
+    def bulkload_data(self, active_cluster: HBaseDockerClient, table_name: str, column_family: str = 'cf',
+                      num_rows: int = 500, initial_row_num: int = 0):
+        logger.info(f"Running {self.bulkload_script} to bulkload {num_rows} rows into table '{table_name}' "
+                    f"on {active_cluster.name}, starting with row {initial_row_num}")
+        active_cluster.run_docker_exec_command(
+            f"{self.bulkload_script} {table_name} {column_family} -n {num_rows} -i {initial_row_num}")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -32,19 +45,25 @@ if __name__ == '__main__':
     table1 = 'blt1'
     table2 = 'blt2'
     table3 = 'blt3'
-    column_family = 'cf'
-    bulkload_script = f"{container_utils_dir}/bulkload.sh"
+    tables = [table1, table2, table3]
+
+    bulkloader = Bulkloader(bulkload_script=f"{container_utils_dir}/bulkload.sh")
 
     reset_cluster_setup(active_cluster=cluster1, replica_cluster=cluster2,
                         skip_container_restart=skip_container_restart, docker_compose_file=docker_compose_file,
                         data_store_root=data_store_root)
 
+    logger.info(f"The active cluster is {cluster1.name} and the replica cluster is {cluster2.name}")
+
     # Bulkload data to active cluster and verify the data is there
-    cluster1.run_docker_exec_command(f"{bulkload_script} {table1} {column_family}")
+    logger.info(f"Bulkloading data to '{table1}' on the active cluster and verifying the data is there")
+    bulkloader.bulkload_data(active_cluster=cluster1, table_name=table1)
     cluster1.assert_table_exists(table1)
     cluster1.assert_table_row_count(table1, expected_row_count=500)
 
     # Replica cluster should not see bulkloaded data until meta and HFiles have been refreshed
+    logger.info(f"The replica cluster {cluster2.name} should not see bulkloaded data until "
+                f"meta and HFiles have been refreshed")
     cluster2.assert_table_does_not_exist(table1)
     cluster2.refresh_meta()
     cluster2.refresh_hfiles()
@@ -52,25 +71,31 @@ if __name__ == '__main__':
     cluster2.assert_table_row_count(table1, expected_row_count=500)
 
     # Cluster 1 is now a replica and Cluster 2 is not the active cluster
+    logger.info(f"Making {cluster2.name} the active cluster and {cluster1.name} the replica cluster")
     cluster1.enable_read_only_mode()
     cluster2.disable_read_only_mode()
 
     # Bulkload more data into the existing table on Cluster 2
-    cluster2.run_docker_exec_command(f"{bulkload_script} {table1} {column_family} -n 300 -i 500")
+    logger.info(f"Bulkloading more data into the existing table on {cluster2.name}")
+    bulkloader.bulkload_data(active_cluster=cluster2, table_name=table1, num_rows=300, initial_row_num=500)
     cluster2.assert_table_row_count(table1, expected_row_count=800)
 
     # Cluster 1 should not see the newly bulkloaded data until its meta and HFiles have been refreshed
+    logger.info(f"The replica cluster {cluster1.name} should not see bulkloaded data until "
+                f"meta and HFiles have been refreshed")
     cluster1.assert_table_row_count(table1, expected_row_count=500)
     cluster1.refresh_meta()
     cluster1.refresh_hfiles()
     cluster1.assert_table_row_count(table1, expected_row_count=800)
 
     # Bulkload data into a new table on Cluster 2
-    cluster2.run_docker_exec_command(f"{bulkload_script} {table2} {column_family} -n 600")
+    logger.info(f"Bulkloading data into new table '{table2}' on active cluster {cluster2.name}")
+    bulkloader.bulkload_data(active_cluster=cluster2, table_name=table2, num_rows=600)
     cluster2.assert_table_exists(table2)
     cluster2.assert_table_row_count(table2, expected_row_count=600)
 
     # Cluster 1 should not see this new table until after refreshing meta and HFiles
+    logger.info(f"The replica cluster {cluster1.name} should not see '{table2}' until after refreshing meta and HFiles")
     cluster1.assert_table_does_not_exist(table2)
     cluster1.refresh_meta()
     cluster1.refresh_hfiles()
@@ -79,24 +104,53 @@ if __name__ == '__main__':
     cluster1.assert_table_row_count(table1, expected_row_count=800)
 
     # Cluster 1 is back to being the active cluster and Cluster 2 is once again the replica cluster
+    logger.info(f"Making {cluster1.name} the active cluster and {cluster2.name} the replica cluster")
     cluster2.enable_read_only_mode()
     cluster1.disable_read_only_mode()
 
     # Bulkload data onto both existing tables, and a new third table
-    cluster1.run_docker_exec_command(f"{bulkload_script} {table1} {column_family} -n 400 -i 800")
-    cluster1.run_docker_exec_command(f"{bulkload_script} {table2} {column_family} -n 600 -i 600")
-    cluster1.run_docker_exec_command(f"{bulkload_script} {table3} {column_family} -n 1200")
-    cluster1.assert_table_row_count(table1, expected_row_count=1200)
-    cluster1.assert_table_row_count(table2, expected_row_count=1200)
-    cluster1.assert_table_row_count(table3, expected_row_count=1200)
+    logger.info(f"Bulkloading data onto '{table1}' and '{table2}', as well as a new table '{table3}'")
+    bulkloader.bulkload_data(active_cluster=cluster1, table_name=table1, num_rows=400, initial_row_num=800)
+    bulkloader.bulkload_data(active_cluster=cluster1, table_name=table2, num_rows=600, initial_row_num=600)
+    bulkloader.bulkload_data(active_cluster=cluster1, table_name=table3, num_rows=1200)
+    for table in tables:
+        cluster1.assert_table_row_count(table, expected_row_count=1200)
 
     # Cluster 2 should see the old row counts for the existing tables. It won't see the new table
     # or the updated row counts until after its meta and HFiles have been refreshed.
+    logger.info(f"The replica cluster {cluster2.name} should not see '{table3}' or updated values for "
+                f"'{table1}' and '{table2}' until after refreshing meta and HFiles")
     cluster2.assert_table_row_count(table1, expected_row_count=800)
     cluster2.assert_table_row_count(table2, expected_row_count=600)
     cluster2.assert_table_does_not_exist(table3)
     cluster2.refresh_meta()
     cluster2.refresh_hfiles()
-    cluster2.assert_table_row_count(table1, expected_row_count=1200)
-    cluster2.assert_table_row_count(table2, expected_row_count=1200)
-    cluster2.assert_table_row_count(table3, expected_row_count=1200)
+    for table in tables:
+        cluster2.assert_table_row_count(table, expected_row_count=1200)
+
+    # Cluster 2 is now the active cluster and Cluster 1 is the replica cluster
+    logger.info(f"Making {cluster2.name} the active cluster and {cluster1.name} the replica cluster")
+    cluster1.enable_read_only_mode()
+    cluster2.disable_read_only_mode()
+
+    # Bulkload more rows into each table on Cluster 2 and into a new table
+    table4 = 'blt4'
+    logger.info(f"Bulkloading data onto '{table1}', '{table2}', and '{table3}', as well as a new table '{table4}'")
+    for table in tables:
+        bulkloader.bulkload_data(active_cluster=cluster2, table_name=table, num_rows=1200, initial_row_num=1200)
+    bulkloader.bulkload_data(active_cluster=cluster2, table_name=table4, num_rows=2400)
+    tables.append(table4)
+    for table in tables:
+        cluster2.assert_table_row_count(table, expected_row_count=2400)
+
+    # Cluster 1 should see the old row counts for the existing tables. It won't see the new table
+    # or the updated row counts until after its meta and HFiles have been refreshed.
+    logger.info(f"The replica cluster {cluster1.name} should not see '{table4}' or updated values for "
+                f"'{table1}', '{table2}', and '{table3}' until after refreshing meta and HFiles")
+    for table in tables[:-1]:
+        cluster1.assert_table_row_count(table, 1200)
+    cluster1.assert_table_does_not_exist(table4)
+    cluster1.refresh_meta()
+    cluster1.refresh_hfiles()
+    for table in tables:
+        cluster1.assert_table_row_count(table, 2400)
