@@ -3,6 +3,7 @@
 This script tests bulk-loading data with Read-Replica HBase clusters.
 """
 import argparse
+import time
 
 from python.src import get_logger, HBaseDockerClient
 from python.src.environment_loader import get_env
@@ -133,24 +134,63 @@ if __name__ == '__main__':
     cluster1.enable_read_only_mode()
     cluster2.disable_read_only_mode()
 
+    # Split regions on two tables on the active cluster
+    for table in [table1, table2]:
+        logger.info(f"Splitting table '{table}' on {cluster2.name}")
+        cluster2.split(table)
+        cluster2.major_compact_and_wait(table)
+        cluster2.catalogjanitor_run()
+        time.sleep(5)
+        cluster2.assert_region_count_for_table(table, expected_region_count=2)
+
     # Bulkload more rows into each table on Cluster 2 and into a new table
     table4 = 'blt4'
     logger.info(f"Bulkloading data onto '{table1}', '{table2}', and '{table3}', as well as a new table '{table4}'")
     for table in tables:
         bulkloader.bulkload_data(active_cluster=cluster2, table_name=table, num_rows=1200, initial_row_num=1200)
+        print(cluster2.list_regions(table))
     bulkloader.bulkload_data(active_cluster=cluster2, table_name=table4, num_rows=2400)
     tables.append(table4)
     for table in tables:
         cluster2.assert_table_row_count(table, expected_row_count=2400)
 
-    # Cluster 1 should see the old row counts for the existing tables. It won't see the new table
+    # The replica cluster should see the old row counts for the existing tables. It won't see the new table
     # or the updated row counts until after its meta and HFiles have been refreshed.
-    logger.info(f"The replica cluster {cluster1.name} should not see '{table4}' or updated values for "
+    logger.info(f"The replica cluster {cluster1.name} should not see '{table4}' or row counts/region splits for "
                 f"'{table1}', '{table2}', and '{table3}' until after refreshing meta and HFiles")
     for table in tables[:-1]:
-        cluster1.assert_table_row_count(table, 1200)
+        cluster1.assert_table_row_count(table, expected_row_count=1200)
     cluster1.assert_table_does_not_exist(table4)
+
+    # The replica cluster should not see any region splits until after refreshing meta and HFiles
+    for table in tables[:-1]:
+        cluster1.assert_region_count_for_table(table, expected_region_count=1)
+
+    # The replica cluster will now see updated row counts and region splits
     cluster1.refresh_meta()
     cluster1.refresh_hfiles()
-    for table in tables:
-        cluster1.assert_table_row_count(table, 2400)
+    logger.info(f"Replica cluster {cluster1.name} should now see updated row counts and region splits")
+    for table, num_regions in zip(tables, [2, 2, 1, 1]):
+        cluster1.assert_table_row_count(table, expected_row_count=2400)
+        cluster1.assert_region_count_for_table(table, expected_region_count=num_regions)
+
+    # Make Cluster 1 the active cluster and Cluster 2 the replica cluster
+    cluster2.enable_read_only_mode()
+    cluster1.disable_read_only_mode()
+
+    # Split regions on the active cluster. The replica cluster won't see the updated region count until meta and HFiles
+    # have been refreshed
+    for table, num_regions in zip(tables, [4, 4, 2, 2]):
+        cluster1.split(table)
+        cluster1.major_compact(table)
+        cluster1.catalogjanitor_run()
+        time.sleep(5)
+        cluster1.assert_region_count_for_table(table, num_regions)
+
+        # Replica cluster still has old region count
+        cluster2.assert_region_count_for_table(table, num_regions/2)
+
+        # Update the replica cluster and verify new region count
+        cluster2.refresh_meta()
+        cluster2.refresh_hfiles()
+        cluster2.assert_region_count_for_table(table, num_regions)
