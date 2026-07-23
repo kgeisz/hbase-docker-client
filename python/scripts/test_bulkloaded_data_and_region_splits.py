@@ -25,7 +25,7 @@ class Bulkloader:
             f"{self.bulkload_script} {table_name} {column_family} -n {num_rows} -i {initial_row_num}")
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -180,3 +180,7 @@ if __name__ == '__main__':
         # Update the replica cluster and verify new region count
         cluster2.refresh_meta_and_hfiles()
         cluster2.assert_region_count_for_table(table, num_regions)
+
+
+if __name__ == '__main__':
+    main()

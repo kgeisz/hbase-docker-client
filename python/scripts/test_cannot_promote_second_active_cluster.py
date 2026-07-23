@@ -27,6 +27,10 @@ from time import sleep
 
 logger = get_logger(__name__)
 
+COLUMN_FAMILY = "cf"
+EXPECTED_ERROR_MSG = ("ReadOnlyTransitionException: Cannot disable read-only mode because another active cluster "
+                      "already exists on this storage location. The read-only coprocessors have not been removed.")
+
 
 def assert_error_when_trying_to_have_second_active_cluster(replica_cluster: HBaseDockerClient, expected_error: str):
     try:
@@ -42,10 +46,10 @@ def assert_error_when_trying_to_have_second_active_cluster(replica_cluster: HBas
 
 def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient, data_root: str):
     create_table_and_test_active_and_replica_clusters(active_cluster, replica_cluster)
-    assert_error_when_trying_to_have_second_active_cluster(replica_cluster, expected_error_msg)
+    assert_error_when_trying_to_have_second_active_cluster(replica_cluster, EXPECTED_ERROR_MSG)
 
     # Cluster should still be in read-only mode after failed transition from read-only to read-write mode
-    replica_cluster.assert_read_only_error_occurs('create', 'test_table', column_family)
+    replica_cluster.assert_read_only_error_occurs('create', 'test_table', COLUMN_FAMILY)
 
     assert_crud_operations_work_on_active_cluster(active_cluster)
 
@@ -59,7 +63,7 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
     assert_correct_active_cluster_suffix(active_cluster, data_root)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -74,10 +78,6 @@ if __name__ == '__main__':
     cluster1, cluster2 = load_env_and_set_up_clients()
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
     docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
-    column_family = "cf"
-
-    expected_error_msg = ("ReadOnlyTransitionException: Cannot disable read-only mode because another active cluster "
-                          "already exists on this storage location. The read-only coprocessors have not been removed.")
 
     reset_cluster_setup(active_cluster=cluster1, replica_cluster=cluster2,
                         skip_container_restart=skip_container_restart, docker_compose_file=docker_compose_file,
@@ -94,3 +94,7 @@ if __name__ == '__main__':
         else:
             run_test_iteration(active_cluster=cluster2, replica_cluster=cluster1, data_root=data_store_root)
         logger.info(f"Finished iteration {i} of {test_iterations}")
+
+
+if __name__ == '__main__':
+    main()

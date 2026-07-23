@@ -55,7 +55,7 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
     replica_cluster.assert_table_does_not_exist(table_name)
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
@@ -76,3 +76,7 @@ if __name__ == "__main__":
         logger.error(f"An error occurred:\n{e}")
         logger.info("Cleaning up any tables that may be remaining")
         HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
+
+
+if __name__ == "__main__":
+    main()

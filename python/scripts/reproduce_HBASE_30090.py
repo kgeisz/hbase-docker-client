@@ -21,7 +21,7 @@ from python.src.utils import load_env_and_set_up_clients
 logger = get_logger(__name__)
 
 
-if __name__ == '__main__':
+def main():
     cluster1, cluster2 = load_env_and_set_up_clients()
     table_name = "t1"
     column_family = "cf"
@@ -104,3 +104,7 @@ if __name__ == '__main__':
                                    f"the following message:\n{expected_msg}\n"
                                    f"Got the following instead:\n{str(e)}")
         logger.info(f"Finished iteration {i} of {iterations}")
+
+
+if __name__ == '__main__':
+    main()

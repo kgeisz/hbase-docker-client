@@ -45,7 +45,7 @@ def assert_error_in_master_log(cluster: HBaseDockerClient):
     logger.info(f"  [PASS] Found expected error message in {cluster.name}'s master log")
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--clean-up-containers', action='store_true',
                         help='Stop Docker containers and revert cluster configurations to one '
@@ -111,3 +111,7 @@ if __name__ == '__main__':
         HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
         cluster1.disable_read_only_mode(run_update_all_config=False)
         cluster2.enable_read_only_mode(run_update_all_config=False)
+
+
+if __name__ == '__main__':
+    main()

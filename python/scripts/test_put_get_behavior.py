@@ -58,7 +58,7 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     replica_cluster.assert_table_row_count(table_name, 0)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
@@ -77,3 +77,7 @@ if __name__ == '__main__':
     replica_cluster.refresh_meta()
 
     test_put_delete_behavior(active_cluster, replica_cluster, table_name, column)
+
+
+if __name__ == '__main__':
+    main()

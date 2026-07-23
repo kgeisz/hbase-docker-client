@@ -99,7 +99,7 @@ def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, 
     assert_correct_active_cluster_suffix(cluster2, data_store_root)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -151,3 +151,7 @@ if __name__ == '__main__':
             logger.info(f"Finished read-only flag flip {flip_num} of {read_only_flag_flips_per_iteration}")
             flip_num += 1
         logger.info(f"Finished iteration {i} of {test_iterations}")
+
+
+if __name__ == '__main__':
+    main()
