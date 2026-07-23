@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+Tests table creation behavior for read-replica clusters. It creates a table on the active
+cluster, and then runs refresh_meta on the replica cluster and verifies the table's existence.
+It does a similar process when dropping the table on the active cluster. It also verifies
+tables cannot be created/dropped on the replica cluster.
+"""
 import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
@@ -9,12 +15,6 @@ logger = get_logger(__name__)
 
 
 def test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family):
-    """
-    Tests table creation behavior for read-replica clusters. It creates a table on the active
-    cluster, and then runs refresh_meta on the replica cluster and verifies the table's existence.
-    It does a similar process when dropping the table on the active cluster. It also verifies
-    tables cannot be created/dropped on the replica cluster.
-    """
     # We should not be able to create a new table on the read-replica cluster
     replica_cluster.assert_read_only_error_occurs('create', table_name, column_family)
 

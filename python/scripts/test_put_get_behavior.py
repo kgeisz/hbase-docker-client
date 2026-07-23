@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Verifies data can be added to/deleted from the active cluster and the read-replica cluster
+does not see this data until refresh_hfiles has been run. Also verifies put and delete
+operations on the read-replica cluster result in an error.
+"""
 import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient
@@ -9,11 +14,6 @@ logger = get_logger(__name__)
 
 
 def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column):
-    """
-    Verifies data can be added to/deleted from the active cluster, and that the read-replica cluster
-    does not see this data until refresh_hfiles has been run. It also verifies put and delete
-    operations on the read-replica result in an error.
-    """
     # Add data to the table on the active cluster
     logger.info(f"Adding data to '{table_name}' on {active_cluster.name} and verifying it exists")
     active_cluster.put(table_name, "row1", column, "value1")
