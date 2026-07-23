@@ -152,3 +152,10 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
         HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
                                                       data_store_root=f'{data_store_root}')
         HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
+
+
+def swap_cluster_roles(new_active_cluster, new_replica_cluster, run_update_all_config=True):
+    logger.info(f"Making {new_active_cluster.name} the active cluster and "
+                f"{new_replica_cluster.name} the replica cluster")
+    new_replica_cluster.enable_read_only_mode(run_update_all_config=run_update_all_config)
+    new_active_cluster.disable_read_only_mode(run_update_all_config=run_update_all_config)

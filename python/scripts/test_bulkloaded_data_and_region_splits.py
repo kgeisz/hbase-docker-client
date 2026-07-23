@@ -8,7 +8,7 @@ import time
 from python.src import get_logger, HBaseDockerClient
 from python.src.environment_loader import get_env
 from python.src.utils import (add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
-                              load_env_and_set_up_clients)
+                              load_env_and_set_up_clients, swap_cluster_roles)
 
 logger = get_logger(__name__)
 
@@ -71,10 +71,8 @@ if __name__ == '__main__':
     cluster2.assert_table_exists(table1)
     cluster2.assert_table_row_count(table1, expected_row_count=500)
 
-    # Cluster 1 is now a replica and Cluster 2 is not the active cluster
-    logger.info(f"Making {cluster2.name} the active cluster and {cluster1.name} the replica cluster")
-    cluster1.enable_read_only_mode()
-    cluster2.disable_read_only_mode()
+    # Cluster 1 is now a replica and Cluster 2 is now the active cluster
+    swap_cluster_roles(new_active_cluster=cluster2, new_replica_cluster=cluster1)
 
     # Bulkload more data into the existing table on Cluster 2
     logger.info(f"Bulkloading more data into the existing table on {cluster2.name}")
@@ -105,9 +103,7 @@ if __name__ == '__main__':
     cluster1.assert_table_row_count(table1, expected_row_count=800)
 
     # Cluster 1 is back to being the active cluster and Cluster 2 is once again the replica cluster
-    logger.info(f"Making {cluster1.name} the active cluster and {cluster2.name} the replica cluster")
-    cluster2.enable_read_only_mode()
-    cluster1.disable_read_only_mode()
+    swap_cluster_roles(new_active_cluster=cluster1, new_replica_cluster=cluster2)
 
     # Bulkload data onto both existing tables, and a new third table
     logger.info(f"Bulkloading data onto '{table1}' and '{table2}', as well as a new table '{table3}'")
@@ -130,9 +126,7 @@ if __name__ == '__main__':
         cluster2.assert_table_row_count(table, expected_row_count=1200)
 
     # Cluster 2 is now the active cluster and Cluster 1 is the replica cluster
-    logger.info(f"Making {cluster2.name} the active cluster and {cluster1.name} the replica cluster")
-    cluster1.enable_read_only_mode()
-    cluster2.disable_read_only_mode()
+    swap_cluster_roles(new_active_cluster=cluster2, new_replica_cluster=cluster1)
 
     # Split regions on two tables on the active cluster
     for table in [table1, table2]:
@@ -148,7 +142,6 @@ if __name__ == '__main__':
     logger.info(f"Bulkloading data onto '{table1}', '{table2}', and '{table3}', as well as a new table '{table4}'")
     for table in tables:
         bulkloader.bulkload_data(active_cluster=cluster2, table_name=table, num_rows=1200, initial_row_num=1200)
-        print(cluster2.list_regions(table))
     bulkloader.bulkload_data(active_cluster=cluster2, table_name=table4, num_rows=2400)
     tables.append(table4)
     for table in tables:
@@ -175,8 +168,7 @@ if __name__ == '__main__':
         cluster1.assert_region_count_for_table(table, expected_region_count=num_regions)
 
     # Make Cluster 1 the active cluster and Cluster 2 the replica cluster
-    cluster2.enable_read_only_mode()
-    cluster1.disable_read_only_mode()
+    swap_cluster_roles(new_active_cluster=cluster1, new_replica_cluster=cluster2)
 
     # Split regions on the active cluster. The replica cluster won't see the updated region count until meta and HFiles
     # have been refreshed
