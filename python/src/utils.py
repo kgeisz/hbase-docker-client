@@ -46,14 +46,7 @@ def load_env_and_set_up_clients(cluster1_name: str = "Cluster 1",
 def run_put_and_get(cluster: HBaseDockerClient, table: str, row: str, cf: str, data: str):
     cluster.put(table, row, cf, data)
     cluster.assert_table_row_count(table, expected_row_count=1)
-    return assert_get_output(cluster, table, row, cf, expected_data=data)
-
-
-def assert_get_output(cluster: HBaseDockerClient, table: str, row: str, cf: str, expected_data: str):
-    output = cluster.get(table, row, cf)
-    assert f"value={expected_data}" in output, \
-        f"Expected get command to retrieve a row with value={expected_data}. Output instead was:\n{output}"
-    return output
+    return cluster.assert_get_output(table, row, cf, expected_data=data)
 
 
 def assert_crud_operations_work_on_active_cluster(cluster: HBaseDockerClient):
@@ -77,7 +70,7 @@ def assert_crud_operations_work_on_active_cluster(cluster: HBaseDockerClient):
     # This row has two versions. This only deletes the first version
     cluster.delete(table, row, column=f"{cf}:")
     cluster.assert_table_row_count(table, expected_row_count=1)
-    assert_get_output(cluster, table, row, cf, expected_data='1')
+    cluster.assert_get_output(table, row, cf, expected_data='1')
 
     # Delete the final version
     cluster.delete(table, row, column=f"{cf}:")

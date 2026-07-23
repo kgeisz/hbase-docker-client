@@ -404,6 +404,12 @@ class HBaseDockerClient:
             (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
              f"Instead got {actual_row_count}")
 
+    def assert_get_output(self, table: str, row: str, cf: str, expected_data: str):
+        output = self.get(table, row, cf)
+        assert f"value={expected_data}" in output, \
+            f"Expected get command to retrieve a row with value={expected_data}. Output instead was:\n{output}"
+        return output
+
     def assert_region_count_for_table(self, table_name, expected_region_count):
         logger.info(f"Verifying table '{table_name}' has {expected_region_count} region(s)")
         output = self.list_regions(table_name)
