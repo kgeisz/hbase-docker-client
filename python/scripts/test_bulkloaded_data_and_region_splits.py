@@ -7,6 +7,7 @@ import time
 
 from python.src import get_logger, HBaseDockerClient
 from python.src.environment_loader import get_env
+from python.src.hbase_docker_client import DockerExecCommandError
 from python.src.utils import (add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
                               load_env_and_set_up_clients, swap_cluster_roles)
 
@@ -23,6 +24,22 @@ class Bulkloader:
                     f"on {active_cluster.name}, starting with row {initial_row_num}")
         active_cluster.run_docker_exec_command(
             f"{self.bulkload_script} {table_name} {column_family} -n {num_rows} -i {initial_row_num}")
+
+
+def assert_cannot_bulkload_data_onto_replica(bulkloader: Bulkloader, replica_cluster: HBaseDockerClient):
+    logger.info(f"Verifying data cannot be loaded onto {replica_cluster.name} because read-only mode is enabled")
+    try:
+        bulkloader.bulkload_data(replica_cluster, table_name='replica-blt1', column_family='cf')
+        raise RuntimeError(f"Expected bulkloading data onto replica cluster {replica_cluster.name} "
+                           f"to result in an error")
+    except DockerExecCommandError as e:
+        expected_error_msg = ("org.apache.hadoop.hbase.WriteAttemptedOnReadOnlyClusterException: "
+                              "Operation not allowed in Read-Only Mode")
+        assert expected_error_msg in str(e), (f"Expected exception to container the following error message after "
+                                              f"attempting to bulkload data on to a replica cluster:\n"
+                                              f"{expected_error_msg}\n"
+                                              f"The actual exception was:\n{e}")
+        logger.info(f"Bulkload onto replica cluster {replica_cluster.name} failed as expected")
 
 
 def main():
@@ -55,6 +72,8 @@ def main():
                         data_store_root=data_store_root)
 
     logger.info(f"The active cluster is {cluster1.name} and the replica cluster is {cluster2.name}")
+
+    assert_cannot_bulkload_data_onto_replica(bulkloader, replica_cluster=cluster2)
 
     # Bulkload data to active cluster and verify the data is there
     logger.info(f"Bulkloading data to '{table1}' on the active cluster and verifying the data is there")
