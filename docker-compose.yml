@@ -9,7 +9,7 @@ services:
     ports:
       - ${ACTIVE_CLUSTER_PORT}:16010 # Master UI
     volumes:
-      - ./utils:/opt/utils
+      - ./utils:${CONTAINER_UTILS_DIR}
       - ${HBASE_DATA_STORE_ROOT}/data-store/hbase:/data-store/hbase
       - ${ACTIVE_CLUSTER_CONF_DIR}/hbase-site.xml:${HBASE_CONF_DIR}/hbase-site.xml
       - ${ACTIVE_CLUSTER_CONF_DIR}/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
@@ -22,7 +22,7 @@ services:
     ports:
       - ${REPLICA_CLUSTER_PORT}:16010 # Master UI
     volumes:
-      - ./utils:/opt/utils
+      - ./utils:${CONTAINER_UTILS_DIR}
       - ${HBASE_DATA_STORE_ROOT}/data-store/hbase:/data-store/hbase
       - ${REPLICA_CLUSTER_CONF_DIR}/hbase-site.xml:${HBASE_CONF_DIR}/hbase-site.xml
       - ${REPLICA_CLUSTER_CONF_DIR}/zoo.cfg:${HBASE_CONF_DIR}/zoo.cfg
