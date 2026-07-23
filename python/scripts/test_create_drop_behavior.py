@@ -7,7 +7,7 @@ tables cannot be created/dropped on the replica cluster.
 """
 import argparse
 
-from python.src.hbase_docker_client import HBaseDockerClient, HBaseShellCommandError
+from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
 from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
 
@@ -64,18 +64,13 @@ def main():
                                                                   cluster2_name="Read-Replica Cluster")
     table_name = "t1"
     column_family = "cf"
-    try:
-        if not args.skip_table_cleanup_on_start:
-            # Delete any lingering tables
-            logger.info(f"Checking if table '{table_name}' already exists on {active_cluster.name} "
-                        f"and dropping it if necessary")
-            HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
-
-        test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)
-    except (RuntimeError, HBaseShellCommandError, KeyboardInterrupt) as e:
-        logger.error(f"An error occurred:\n{e}")
-        logger.info("Cleaning up any tables that may be remaining")
+    if not args.skip_table_cleanup_on_start:
+        # Delete any lingering tables
+        logger.info(f"Checking if table '{table_name}' already exists on {active_cluster.name} "
+                    f"and dropping it if necessary")
         HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
+
+    test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)
 
 
 if __name__ == "__main__":
