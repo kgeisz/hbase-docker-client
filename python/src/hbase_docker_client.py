@@ -237,6 +237,49 @@ class HBaseDockerClient:
 
         self.run_hbase_shell_command(split_cmd)
 
+    def major_compact(self, table_or_region, column_family=None, mob=None):
+        log_msg = f"Running major_compact on '{table_or_region}'"
+        command = f"major_compact '{table_or_region}'"
+
+        if column_family:
+            log_msg += f" for column family '{column_family}'"
+            command += f", '{column_family}'"
+
+        if mob and column_family:
+            log_msg += " with MOB"
+            command += f", 'MOB'"
+        elif mob and not column_family:
+            log_msg += " with MOB"
+            command += ", nil, 'MOB'"
+
+        self.run_hbase_shell_command(command)
+
+    def major_compact_and_wait(self, table_or_region, column_family=None, mob=None, timeout=30, sleep_time=1):
+        """Triggers major compaction on a table and blocks until it completes."""
+        logger.info(f"Triggering major compaction on '{table_or_region}' on {self.name}...")
+        self.major_compact(table_or_region, column_family, mob)
+
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            output = self.run_hbase_shell_command(f"compaction_state '{table_or_region}'")
+
+            # When all regions finish compacting, compaction_state returns NONE
+            if "NONE" in output:
+                logger.info(f"SUCCESS: Major compaction completed for '{table_or_region}'.")
+                return True
+
+            logger.debug(f"Compaction still in progress for '{table_or_region}'... waiting {sleep_time}s")
+            time.sleep(sleep_time)
+
+        raise RuntimeError(
+            f"TIMEOUT: Major compaction on table '{table_or_region}' failed to complete within {timeout} seconds."
+        )
+
+    def catalogjanitor_run(self):
+        """Forces the CatalogJanitor to immediately clean up split parent regions in hbase:meta."""
+        logger.info(f"Running catalogjanitor_run on {self.name}")
+        self.run_hbase_shell_command("catalogjanitor_run")
+
     def refresh_meta(self):
         logger.info(f"Refreshing meta on {self.name}")
         self.run_hbase_shell_command("refresh_meta")
