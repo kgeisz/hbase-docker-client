@@ -40,8 +40,7 @@ if __name__ == '__main__':
 
             # Refresh replica cluster to get this table
             cluster2.assert_table_does_not_exist('t1')
-            cluster2.refresh_meta()
-            cluster2.refresh_hfiles()
+            cluster2.refresh_meta_and_hfiles()
             cluster2.assert_table_exists('t1')
             cluster2.assert_table_row_count('t1', 1)
 
@@ -60,8 +59,7 @@ if __name__ == '__main__':
             cluster2.flush('t2')
 
             # Refresh the new replica cluster and verify it has this data
-            cluster1.refresh_meta()
-            cluster1.refresh_hfiles()
+            cluster1.refresh_meta_and_hfiles()
             cluster1.assert_table_row_count('t1', 2)
             cluster1.assert_table_row_count('t2', 1)
 
@@ -82,8 +80,7 @@ if __name__ == '__main__':
             cluster1.flush('t3')
 
             # Refresh original replica cluster that is now back into read-only mode
-            cluster2.refresh_meta()
-            cluster2.refresh_hfiles()
+            cluster2.refresh_meta_and_hfiles()
             cluster2.assert_read_only_error_occurs('create', 't4', column_family)
             cluster2.assert_read_only_error_occurs(
                 'put', 't1', column_family, 'r4', '4')

@@ -288,6 +288,11 @@ class HBaseDockerClient:
         logger.info(f"Refreshing HFiles on {self.name}")
         self.run_hbase_shell_command("refresh_hfiles")
 
+    def refresh_meta_and_hfiles(self):
+        """Consecutively runs refresh_meta and refresh_hfiles in the HBase shell"""
+        self.refresh_meta()
+        self.refresh_hfiles()
+
     def enable_read_only_mode(self, run_update_all_config=True):
         """
         Sets hbase.global.readonly.enabled to 'true' in the local hbase-site.xml file and runs update_all_config

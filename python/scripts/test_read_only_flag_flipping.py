@@ -54,8 +54,7 @@ def refresh_replica_and_verify_tables(replica_cluster: HBaseDockerClient, new_ta
     Refresh meta and HFiles on the replica cluster, and verify the new table
     exists and each table has the correct number of rows
     """
-    replica_cluster.refresh_meta()
-    replica_cluster.refresh_hfiles()
+    replica_cluster.refresh_meta_and_hfiles()
     replica_cluster.assert_table_exists(new_table)
     for i, table in enumerate(tables[::-1], 1):
         replica_cluster.assert_table_row_count(table, i)

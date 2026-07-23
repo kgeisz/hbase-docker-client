@@ -30,8 +30,7 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
 
     # Refresh meta and HFiles, and verify the read-replica cluster now sees the data
     logger.info(f"Refreshing meta and HFiles on {replica_cluster.name}")
-    replica_cluster.refresh_meta()
-    replica_cluster.refresh_hfiles()
+    replica_cluster.refresh_meta_and_hfiles()
     logger.info(f"Verifying '{table_name}' on {replica_cluster.name} has data after refreshing HFiles")
     replica_cluster.assert_table_row_count(table_name, 1)
 

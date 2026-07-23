@@ -66,8 +66,7 @@ if __name__ == '__main__':
     logger.info(f"The replica cluster {cluster2.name} should not see bulkloaded data until "
                 f"meta and HFiles have been refreshed")
     cluster2.assert_table_does_not_exist(table1)
-    cluster2.refresh_meta()
-    cluster2.refresh_hfiles()
+    cluster2.refresh_meta_and_hfiles()
     cluster2.assert_table_exists(table1)
     cluster2.assert_table_row_count(table1, expected_row_count=500)
 
@@ -83,8 +82,7 @@ if __name__ == '__main__':
     logger.info(f"The replica cluster {cluster1.name} should not see bulkloaded data until "
                 f"meta and HFiles have been refreshed")
     cluster1.assert_table_row_count(table1, expected_row_count=500)
-    cluster1.refresh_meta()
-    cluster1.refresh_hfiles()
+    cluster1.refresh_meta_and_hfiles()
     cluster1.assert_table_row_count(table1, expected_row_count=800)
 
     # Bulkload data into a new table on Cluster 2
@@ -96,8 +94,7 @@ if __name__ == '__main__':
     # Cluster 1 should not see this new table until after refreshing meta and HFiles
     logger.info(f"The replica cluster {cluster1.name} should not see '{table2}' until after refreshing meta and HFiles")
     cluster1.assert_table_does_not_exist(table2)
-    cluster1.refresh_meta()
-    cluster1.refresh_hfiles()
+    cluster1.refresh_meta_and_hfiles()
     cluster1.assert_table_exists(table2)
     cluster1.assert_table_row_count(table2, expected_row_count=600)
     cluster1.assert_table_row_count(table1, expected_row_count=800)
@@ -120,8 +117,7 @@ if __name__ == '__main__':
     cluster2.assert_table_row_count(table1, expected_row_count=800)
     cluster2.assert_table_row_count(table2, expected_row_count=600)
     cluster2.assert_table_does_not_exist(table3)
-    cluster2.refresh_meta()
-    cluster2.refresh_hfiles()
+    cluster2.refresh_meta_and_hfiles()
     for table in tables:
         cluster2.assert_table_row_count(table, expected_row_count=1200)
 
@@ -160,8 +156,7 @@ if __name__ == '__main__':
         cluster1.assert_region_count_for_table(table, expected_region_count=1)
 
     # The replica cluster will now see updated row counts and region splits
-    cluster1.refresh_meta()
-    cluster1.refresh_hfiles()
+    cluster1.refresh_meta_and_hfiles()
     logger.info(f"Replica cluster {cluster1.name} should now see updated row counts and region splits")
     for table, num_regions in zip(tables, [2, 2, 1, 1]):
         cluster1.assert_table_row_count(table, expected_row_count=2400)
@@ -183,6 +178,5 @@ if __name__ == '__main__':
         cluster2.assert_region_count_for_table(table, num_regions/2)
 
         # Update the replica cluster and verify new region count
-        cluster2.refresh_meta()
-        cluster2.refresh_hfiles()
+        cluster2.refresh_meta_and_hfiles()
         cluster2.assert_region_count_for_table(table, num_regions)
