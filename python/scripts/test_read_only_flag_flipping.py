@@ -23,7 +23,8 @@ This test script verifies behavior for multiple bug fixes:
 import argparse
 
 from python.src.utils import (assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg,
-                              reset_cluster_setup, load_env_and_set_up_clients)
+                              reset_cluster_setup, load_env_and_set_up_clients,
+                              create_table_and_test_active_and_replica_clusters)
 
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
@@ -31,54 +32,6 @@ from python.src.logger_config import get_logger
 
 COLUMN_FAMILY = "cf"
 logger = get_logger(__name__)
-
-
-def create_table_on_active_cluster(active_cluster: HBaseDockerClient):
-    """Create a new table on the active cluster and assert it exists"""
-    tables = active_cluster.list_tables()
-    new_table = f't{len(tables)+1}'
-    active_cluster.create_table(new_table, COLUMN_FAMILY)
-    active_cluster.assert_table_exists(new_table)
-    return new_table
-
-
-def add_data_to_each_table_on_active_cluster(active_cluster: HBaseDockerClient, tables: list):
-    """Add data to each table in the active cluster"""
-    for i, table in enumerate(tables[::-1], 1):
-        active_cluster.put(table, f'r{i}', COLUMN_FAMILY, i)
-        active_cluster.flush(table)
-
-
-def refresh_replica_and_verify_tables(replica_cluster: HBaseDockerClient, new_table: str, tables: list):
-    """
-    Refresh meta and HFiles on the replica cluster, and verify the new table
-    exists and each table has the correct number of rows
-    """
-    replica_cluster.refresh_meta_and_hfiles()
-    replica_cluster.assert_table_exists(new_table)
-    for i, table in enumerate(tables[::-1], 1):
-        replica_cluster.assert_table_row_count(table, i)
-
-
-def create_table_and_test_active_and_replica_clusters(active_cluster: HBaseDockerClient,
-                                                      replica_cluster: HBaseDockerClient):
-    """
-    Creates a new table and iteratively adds data to each existing table, including the new one.
-    Also verifies expected behavior for the replica cluster, such as verifying the new table is not
-    on the replica before refreshing meta, and then verify new table and data existence after
-    refreshing meta and HFiles.
-    """
-    new_table = create_table_on_active_cluster(active_cluster)
-
-    # The new table should not exist on the replica cluster before refreshing meta
-    replica_cluster.assert_table_does_not_exist(new_table)
-
-    tables = active_cluster.list_tables()
-    # HBase sorts table list by string: ['t1', 't10', 't2, ..., 't9']
-    # We want the list sorted by creation time, so we're sorting on the integer: ['t1', 't2, ..., 't9', 't10']
-    tables.sort(key=lambda x: int(x[1:]))
-    add_data_to_each_table_on_active_cluster(active_cluster, tables)
-    refresh_replica_and_verify_tables(replica_cluster, new_table, tables)
 
 
 def flip_read_only_flag(new_active_cluster: HBaseDockerClient,
@@ -94,7 +47,8 @@ def flip_read_only_flag(new_active_cluster: HBaseDockerClient,
 
 
 def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, data_store_root):
-    create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2)
+    create_table_and_test_active_and_replica_clusters(active_cluster=cluster1, replica_cluster=cluster2,
+                                                      column_family='cf')
     flip_read_only_flag(new_active_cluster=cluster2, new_replica_cluster=cluster1)
     assert_correct_active_cluster_suffix(cluster2, data_store_root)
 

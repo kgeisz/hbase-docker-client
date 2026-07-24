@@ -20,9 +20,9 @@ import argparse
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
 from python.src.logger_config import get_logger
-from python.scripts.test_read_only_flag_flipping import create_table_and_test_active_and_replica_clusters
 from python.src.utils import (assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix,
-                              add_common_skip_container_stop_or_restart_arg, reset_cluster_setup, load_env_and_set_up_clients)
+                              add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
+                              load_env_and_set_up_clients, create_table_and_test_active_and_replica_clusters)
 from time import sleep
 
 logger = get_logger(__name__)
@@ -45,7 +45,7 @@ def assert_error_when_trying_to_have_second_active_cluster(replica_cluster: HBas
 
 
 def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient, data_root: str):
-    create_table_and_test_active_and_replica_clusters(active_cluster, replica_cluster)
+    create_table_and_test_active_and_replica_clusters(active_cluster, replica_cluster, column_family='cf')
     assert_error_when_trying_to_have_second_active_cluster(replica_cluster, EXPECTED_ERROR_MSG)
 
     # Cluster should still be in read-only mode after failed transition from read-only to read-write mode

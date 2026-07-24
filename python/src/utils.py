@@ -152,3 +152,52 @@ def swap_cluster_roles(new_active_cluster, new_replica_cluster, run_update_all_c
                 f"{new_replica_cluster.name} the replica cluster")
     new_replica_cluster.enable_read_only_mode(run_update_all_config=run_update_all_config)
     new_active_cluster.disable_read_only_mode(run_update_all_config=run_update_all_config)
+
+
+def create_table_on_active_cluster(active_cluster: HBaseDockerClient, column_family: str):
+    """Create a new table on the active cluster and assert it exists"""
+    tables = active_cluster.list_tables()
+    new_table = f't{len(tables)+1}'
+    active_cluster.create_table(new_table, column_family)
+    active_cluster.assert_table_exists(new_table)
+    return new_table
+
+
+def add_data_to_each_table_on_active_cluster(active_cluster: HBaseDockerClient, tables: list, column_family: str):
+    """Add data to each table in the active cluster"""
+    for i, table in enumerate(tables[::-1], 1):
+        active_cluster.put(table, f'r{i}', column_family, i)
+        active_cluster.flush(table)
+
+
+def refresh_replica_and_verify_tables(replica_cluster: HBaseDockerClient, new_table: str, tables: list):
+    """
+    Refresh meta and HFiles on the replica cluster, and verify the new table
+    exists and each table has the correct number of rows
+    """
+    replica_cluster.refresh_meta_and_hfiles()
+    replica_cluster.assert_table_exists(new_table)
+    for i, table in enumerate(tables[::-1], 1):
+        replica_cluster.assert_table_row_count(table, i)
+
+
+def create_table_and_test_active_and_replica_clusters(active_cluster: HBaseDockerClient,
+                                                      replica_cluster: HBaseDockerClient,
+                                                      column_family: str):
+    """
+    Creates a new table and iteratively adds data to each existing table, including the new one.
+    Also verifies expected behavior for the replica cluster, such as verifying the new table is not
+    on the replica before refreshing meta, and then verify new table and data existence after
+    refreshing meta and HFiles.
+    """
+    new_table = create_table_on_active_cluster(active_cluster, column_family)
+
+    # The new table should not exist on the replica cluster before refreshing meta
+    replica_cluster.assert_table_does_not_exist(new_table)
+
+    tables = active_cluster.list_tables()
+    # HBase sorts table list by string: ['t1', 't10', 't2, ..., 't9']
+    # We want the list sorted by creation time, so we're sorting on the integer: ['t1', 't2, ..., 't9', 't10']
+    tables.sort(key=lambda x: int(x[1:]))
+    add_data_to_each_table_on_active_cluster(active_cluster, tables, column_family)
+    refresh_replica_and_verify_tables(replica_cluster, new_table, tables)
