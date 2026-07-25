@@ -6,11 +6,27 @@ operations on the read-replica cluster result in an error.
 """
 import argparse
 
-from python.src.hbase_docker_client import HBaseDockerClient
+from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
 from python.src.logger_config import get_logger
 from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
 
 logger = get_logger(__name__)
+
+
+def assert_cannot_flush_table_on_replica(replica_cluster: HBaseDockerClient, table: str):
+    logger.info(f"Verifying table '{table}' cannot be flushed on {replica_cluster.name} "
+                f"because read-only mode is enabled")
+    try:
+        replica_cluster.split(table)
+        raise RuntimeError(f"Expected flush on replica cluster {replica_cluster.name} to result in an error")
+    except DockerExecCommandError as e:
+        expected_error_msg = ("org.apache.hadoop.hbase.WriteAttemptedOnReadOnlyClusterException: "
+                              "Operation not allowed in Read-Only Mode")
+        assert expected_error_msg in str(e), (f"Expected exception to contain the following error message after "
+                                              f"attempting a flush on replica cluster {replica_cluster.name}:\n"
+                                              f"{expected_error_msg}\n"
+                                              f"The actual exception was:\n{e}")
+        logger.info(f"Flush for table '{table}' on replica cluster {replica_cluster.name} failed as expected")
 
 
 def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column):
@@ -35,6 +51,9 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     logger.info(f"Verifying '{table_name}' on {replica_cluster.name} has data after refreshing HFiles")
     replica_cluster.assert_table_row_count(table_name, 1)
     replica_cluster.assert_get_output(table_name, "row1", column, "value1")
+
+    # Verify replica clusters cannot flush tables
+    assert_cannot_flush_table_on_replica(replica_cluster, table_name)
 
     # Verify data cannot be added to the table on the read-replica cluster
     logger.info(f"Verifying data cannot be added to '{table_name}' on {replica_cluster.name}")

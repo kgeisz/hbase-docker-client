@@ -35,11 +35,26 @@ def assert_cannot_bulkload_data_onto_replica(bulkloader: Bulkloader, replica_clu
     except DockerExecCommandError as e:
         expected_error_msg = ("org.apache.hadoop.hbase.WriteAttemptedOnReadOnlyClusterException: "
                               "Operation not allowed in Read-Only Mode")
-        assert expected_error_msg in str(e), (f"Expected exception to container the following error message after "
+        assert expected_error_msg in str(e), (f"Expected exception to contain the following error message after "
                                               f"attempting to bulkload data on to a replica cluster:\n"
                                               f"{expected_error_msg}\n"
                                               f"The actual exception was:\n{e}")
         logger.info(f"Bulkload onto replica cluster {replica_cluster.name} failed as expected")
+
+
+def assert_cannot_split_regions_on_replica(replica_cluster: HBaseDockerClient, table: str):
+    logger.info(f"Verifying regions cannot be split on {replica_cluster.name} because read-only mode is enabled")
+    try:
+        replica_cluster.split(table)
+        raise RuntimeError(f"Expected region split on replica cluster {replica_cluster.name} to result in an error")
+    except DockerExecCommandError as e:
+        expected_error_msg = ("org.apache.hadoop.hbase.WriteAttemptedOnReadOnlyClusterException: "
+                              "Operation not allowed in Read-Only Mode")
+        assert expected_error_msg in str(e), (f"Expected exception to contain the following error message after "
+                                              f"attempting to split a region on a replica cluster:\n"
+                                              f"{expected_error_msg}\n"
+                                              f"The actual exception was:\n{e}")
+        logger.info(f"Region splitting on replica cluster {replica_cluster.name} failed as expected")
 
 
 def main():
@@ -146,7 +161,7 @@ def main():
     # Split regions on two tables on the active cluster
     for table in [table1, table2]:
         logger.info(f"Splitting table '{table}' on {cluster2.name}")
-        cluster2.split(table)
+        cluster2.flush_and_split(table)
         cluster2.major_compact_and_wait(table)
         cluster2.catalogjanitor_run()
         time.sleep(5)
@@ -184,10 +199,12 @@ def main():
     # Make Cluster 1 the active cluster and Cluster 2 the replica cluster
     swap_cluster_roles(new_active_cluster=cluster1, new_replica_cluster=cluster2)
 
+    assert_cannot_split_regions_on_replica(replica_cluster=cluster2, table=table3)
+
     # Split regions on the active cluster. The replica cluster won't see the updated region count until meta and HFiles
     # have been refreshed
     for table, num_regions in zip(tables, [4, 4, 2, 2]):
-        cluster1.split(table)
+        cluster1.flush_and_split(table)
         cluster1.major_compact(table)
         cluster1.catalogjanitor_run()
         time.sleep(5)

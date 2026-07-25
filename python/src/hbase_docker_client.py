@@ -217,10 +217,23 @@ class HBaseDockerClient:
         return self.run_hbase_shell_command(count_cmd)
 
     def flush(self, table_name):
-        logger.debug(f"Flushing table '{table_name}'")
+        logger.debug(f"Flushing table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"flush '{table_name}'")
 
     def split(self, thing_to_split, split_key=None):
+        log_msg = f"Splitting '{thing_to_split}'"
+        split_cmd = f"split '{thing_to_split}'"
+
+        if split_key:
+            log_msg += f" on key '{split_key}'"
+            split_cmd += f", '{split_key}'"
+
+        log_msg += f" on {self.name}"
+
+        logger.info(log_msg)
+        self.run_hbase_shell_command(split_cmd)
+
+    def flush_and_split(self, thing_to_split, split_key=None):
         """
         Flushes the table and triggers an asynchronous region split. Split the entire table or pass a region to split an
         individual region. With the second parameter, you can specify an explicit split key for the region.
@@ -228,14 +241,8 @@ class HBaseDockerClient:
         thing_to_split - TABLENAME, REGIONNAME, or ENCODED_REGIONNAME
         split_key      - where to have the region split
         """
-        logger.info(f"Flushing and triggering split on table '{thing_to_split}' on {self.name}")
         self.flush(thing_to_split)
-
-        split_cmd = f"split '{thing_to_split}'"
-        if split_key:
-            split_cmd += f", '{split_key}'"
-
-        self.run_hbase_shell_command(split_cmd)
+        self.split(thing_to_split, split_key)
 
     def major_compact(self, table_or_region, column_family=None, mob=None):
         log_msg = f"Running major_compact on '{table_or_region}'"
