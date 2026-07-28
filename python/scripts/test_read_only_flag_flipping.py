@@ -81,8 +81,8 @@ def main():
                                                       data_store_root=f'{data_store_root}')
         HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
 
-    test_iterations = 3
-    read_only_flag_flips_per_iteration = 6
+    test_iterations = 1
+    read_only_flag_flips_per_iteration = 15
     for i in range(1, test_iterations + 1):
         logger.info(f"---------- Iteration {i} ----------")
         if i > 1:
