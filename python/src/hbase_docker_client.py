@@ -25,8 +25,8 @@ class DockerExecCommandTimeoutError(DockerExecCommandError):
 
 
 class HBaseDockerClient:
-    def __init__(self, container_name, local_conf, hbase_ui_port=16010, cluster_name="HBase Cluster",
-                 max_retries=12, sleep_time=5):
+    def __init__(self, container_name: str, local_conf: str, hbase_ui_port: int = 16010,
+                 cluster_name: str = "HBase Cluster", max_retries: int = 12, sleep_time: int = 5) -> None:
         self._container_name = container_name
         self._local_conf = local_conf
         self._hbase_ui_port = hbase_ui_port
@@ -35,10 +35,10 @@ class HBaseDockerClient:
         self._sleep_time = sleep_time
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._cluster_name
 
-    def run_docker_exec_command(self, bash_cmd, timeout=None):
+    def run_docker_exec_command(self, bash_cmd: str, timeout: int | None = None) -> str:
         """
         Uses 'docker exec' to run the provided Bash command in the object's Docker container.
         The command looks like: docker exec <container> bash -c <bash_cmd>
@@ -66,7 +66,7 @@ class HBaseDockerClient:
             )
         return stdout
 
-    def run_hbase_shell_command(self, hbase_cmd, timeout=None):
+    def run_hbase_shell_command(self, hbase_cmd: str, timeout: int | None = None) -> str:
         """
         Uses 'docker exec' to run the provided HBase shell command in the object's Docker container.
         The command looks like: docker exec <container> bash -c hbase shell -n <<< "<hbase_cmd>"
@@ -81,7 +81,7 @@ class HBaseDockerClient:
         except DockerExecCommandError as e:
             raise HBaseShellCommandError(e)
 
-    def wait_for_hbase_ui(self):
+    def wait_for_hbase_ui(self) -> bool:
         """Checks for a 200 OK on the HBase Master UI."""
         url = f"http://localhost:{self._hbase_ui_port}"
         logger.info(f"Waiting for HBase UI: {self._cluster_name} on {url}")
@@ -101,7 +101,7 @@ class HBaseDockerClient:
                            f"{self._max_retries} attempts. "
                            f"Last raised exception was: {last_exception}")
 
-    def check_server_status(self, desired_status: dict = None):
+    def check_server_status(self, desired_status: dict | None = None) -> bool:
         """Runs 'status' inside the HBase shell and validates the output."""
         if desired_status is None:
             desired_status = {'masters': '1', 'region_servers': '1', 'dead_servers': '0'}
@@ -138,16 +138,16 @@ class HBaseDockerClient:
         raise RuntimeError(
             f"\nTIMEOUT: {self._cluster_name} shell check failed after {self._max_retries} attempts.")
 
-    def get_hbase_status(self):
+    def get_hbase_status(self) -> str:
         logger.debug(f"Getting status of {self.name}")
         return self.run_hbase_shell_command("status")
 
-    def wait_for_cluster_to_start(self):
+    def wait_for_cluster_to_start(self) -> None:
         """curls the cluster's HBase UI to make sure it is up and then makes sure all desired servers are up"""
         self.wait_for_hbase_ui()
         self.check_server_status()
 
-    def create_table(self, table_name, column_family):
+    def create_table(self, table_name: str, column_family: str) -> bool:
         logger.info(f"Creating table '{table_name}' on {self._cluster_name}")
         create_cmd = f"create '{table_name}', '{column_family}'"
         output = self.run_hbase_shell_command(create_cmd)
@@ -157,15 +157,15 @@ class HBaseDockerClient:
             return False
         return True
 
-    def disable_table(self, table_name):
+    def disable_table(self, table_name: str) -> None:
         logger.debug(f"Disabling table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"disable '{table_name}'")
 
-    def drop_table(self, table_name):
+    def drop_table(self, table_name: str) -> None:
         logger.info(f"Dropping table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"drop '{table_name}'")
 
-    def list_tables(self):
+    def list_tables(self) -> list:
         """Gets the list of HBase tables and returns it as a Python list"""
         logger.debug(f"Getting the list of tables in HBase on {self.name}")
         pattern = r'\[(.*?)\]'
@@ -174,12 +174,12 @@ class HBaseDockerClient:
         match = re.search(pattern, output)
         return ast.literal_eval(match.group(0))
 
-    def list_regions(self, table_name):
+    def list_regions(self, table_name: str) -> str:
         """Gets list of regions and their info for the provided table"""
         logger.info(f"Getting list of regions for table '{table_name}'")
         return self.run_hbase_shell_command(f"list_regions '{table_name}'")
 
-    def put(self, table_name, row, column, data, spec_map=None):
+    def put(self, table_name: str, row: str, column: str, data: str, spec_map: str | None = None) -> None:
         """
         Performs an HBase put command.
         :param table_name: the table we are inserting data into
@@ -195,7 +195,7 @@ class HBaseDockerClient:
             put_cmd += f", {spec_map}"
         self.run_hbase_shell_command(put_cmd)
 
-    def get(self, table_name, row, column=None, spec_map=None):
+    def get(self, table_name: str, row: str, column: str | None = None, spec_map: str | None = None) -> str:
         logger.info(f"Getting data from table '{table_name}' on {self.name}")
         get_cmd = f"get '{table_name}', '{row}'"
         if column:
@@ -206,7 +206,7 @@ class HBaseDockerClient:
         logger.debug(f"Got data:\n{output}")
         return output
 
-    def delete(self, table_name, row, column, timestamp=None, spec_map=None):
+    def delete(self, table_name: str, row: str, column: str, timestamp: int | None = None, spec_map: str | None = None) -> None:
         logger.info(f"Deleting data from table '{table_name}' on {self.name}")
         delete_cmd = f"delete '{table_name}', '{row}', '{column}'"
         if timestamp:
@@ -215,7 +215,7 @@ class HBaseDockerClient:
             delete_cmd += f", {spec_map}"
         self.run_hbase_shell_command(delete_cmd)
 
-    def scan(self, table_name, spec_map=None):
+    def scan(self, table_name: str, spec_map: str | None = None) -> str:
         log_msg = f"Scanning table '{table_name}' on {self.name}"
         scan_cmd = f"scan '{table_name}'"
         if spec_map:
@@ -224,18 +224,18 @@ class HBaseDockerClient:
         logging.info(log_msg)
         return self.run_hbase_shell_command(scan_cmd)
 
-    def count(self, table_name, spec=None):
+    def count(self, table_name: str, spec: str | None = None) -> str:
         logger.info(f"Counting rows for table '{table_name}' on {self.name}")
         count_cmd = f"count '{table_name}'"
         if spec:
             count_cmd += f"{spec}"
         return self.run_hbase_shell_command(count_cmd)
 
-    def flush(self, table_name, timeout=None):
+    def flush(self, table_name: str, timeout: int | None = None) -> None:
         logger.debug(f"Flushing table '{table_name}' on {self.name}")
         self.run_hbase_shell_command(f"flush '{table_name}'", timeout=timeout)
 
-    def split(self, thing_to_split, split_key=None):
+    def split(self, thing_to_split: str, split_key: str | None = None) -> None:
         log_msg = f"Splitting '{thing_to_split}'"
         split_cmd = f"split '{thing_to_split}'"
 
@@ -248,7 +248,7 @@ class HBaseDockerClient:
         logger.info(log_msg)
         self.run_hbase_shell_command(split_cmd)
 
-    def flush_and_split(self, thing_to_split, split_key=None):
+    def flush_and_split(self, thing_to_split: str, split_key: str | None = None) -> None:
         """
         Flushes the table and triggers an asynchronous region split. Split the entire table or pass a region to split an
         individual region. With the second parameter, you can specify an explicit split key for the region.
@@ -259,7 +259,7 @@ class HBaseDockerClient:
         self.flush(thing_to_split)
         self.split(thing_to_split, split_key)
 
-    def major_compact(self, table_or_region, column_family=None, mob=None):
+    def major_compact(self, table_or_region: str, column_family: str | None = None, mob: str | None = None) -> None:
         log_msg = f"Running major_compact on '{table_or_region}'"
         command = f"major_compact '{table_or_region}'"
 
@@ -276,7 +276,7 @@ class HBaseDockerClient:
 
         self.run_hbase_shell_command(command)
 
-    def major_compact_and_wait(self, table_or_region, column_family=None, mob=None, timeout=30, sleep_time=1):
+    def major_compact_and_wait(self, table_or_region: str, column_family: str | None = None, mob: str | None = None, timeout: int = 30, sleep_time: int = 1) -> bool:
         """Triggers major compaction on a table and blocks until it completes."""
         logger.info(f"Triggering major compaction on '{table_or_region}' on {self.name}...")
         self.major_compact(table_or_region, column_family, mob)
@@ -297,25 +297,25 @@ class HBaseDockerClient:
             f"TIMEOUT: Major compaction on table '{table_or_region}' failed to complete within {timeout} seconds."
         )
 
-    def catalogjanitor_run(self):
+    def catalogjanitor_run(self) -> None:
         """Forces the CatalogJanitor to immediately clean up split parent regions in hbase:meta."""
         logger.info(f"Running catalogjanitor_run on {self.name}")
         self.run_hbase_shell_command("catalogjanitor_run")
 
-    def refresh_meta(self):
+    def refresh_meta(self) -> None:
         logger.info(f"Refreshing meta on {self.name}")
         self.run_hbase_shell_command("refresh_meta")
 
-    def refresh_hfiles(self):
+    def refresh_hfiles(self) -> None:
         logger.info(f"Refreshing HFiles on {self.name}")
         self.run_hbase_shell_command("refresh_hfiles")
 
-    def refresh_meta_and_hfiles(self):
+    def refresh_meta_and_hfiles(self) -> None:
         """Consecutively runs refresh_meta and refresh_hfiles in the HBase shell"""
         self.refresh_meta()
         self.refresh_hfiles()
 
-    def enable_read_only_mode(self, run_update_all_config=True):
+    def enable_read_only_mode(self, run_update_all_config: bool = True) -> None:
         """
         Sets hbase.global.readonly.enabled to 'true' in the local hbase-site.xml file and runs update_all_config
         to dynamically update the configuration. This method assumes the hbase-site.xml file is a mounted volume
@@ -323,7 +323,7 @@ class HBaseDockerClient:
         """
         self._set_read_only_mode(new_read_only_flag=True, run_update_all_config=run_update_all_config)
 
-    def disable_read_only_mode(self, run_update_all_config=True):
+    def disable_read_only_mode(self, run_update_all_config: bool = True) -> None:
         """
         Sets hbase.global.readonly.enabled to 'false' in the local hbase-site.xml file and runs update_all_config
         to dynamically update the configuration. This method assumes the hbase-site.xml file is a mounted volume
@@ -331,7 +331,7 @@ class HBaseDockerClient:
         """
         self._set_read_only_mode(new_read_only_flag=False, run_update_all_config=run_update_all_config)
 
-    def _set_read_only_mode(self, new_read_only_flag: bool, run_update_all_config=True):
+    def _set_read_only_mode(self, new_read_only_flag: bool, run_update_all_config: bool = True) -> None:
         action = "Enabling" if new_read_only_flag else "Disabling"
         conjunction_adverb = "and then" if run_update_all_config else "but not"
         logger.info(f"{action} read-only mode in conf for {self.name} "
@@ -346,11 +346,11 @@ class HBaseDockerClient:
         if run_update_all_config:
             self.update_all_config()
 
-    def update_all_config(self):
+    def update_all_config(self) -> None:
         logger.debug(f"Running update_all_config on {self.name} to dynamically update the configuration")
         self.run_hbase_shell_command("update_all_config")
 
-    def get_hbase_conf_property_value(self, conf_prop):
+    def get_hbase_conf_property_value(self, conf_prop: str) -> str | None:
         tree = ET.parse(self._local_conf)
         root = tree.getroot()
         for prop in root.findall('property'):
@@ -358,7 +358,7 @@ class HBaseDockerClient:
             if name_elem is not None and name_elem.text == conf_prop:
                 return prop.find('value').text
 
-    def set_hbase_conf_property_value(self, conf_prop, value):
+    def set_hbase_conf_property_value(self, conf_prop: str, value: str) -> None:
         """Sets hbase.global.readonly.enabled to a new value in a local hbase-site.xml file"""
         tree = ET.parse(self._local_conf)
         root = tree.getroot()
@@ -373,8 +373,8 @@ class HBaseDockerClient:
         # The conf file is a Docker volume - wait for the updated version to sync
         time.sleep(1)
 
-    def assert_read_only_error_occurs(self, cmd_type, table_name, column,
-                                      row=None, data=None):
+    def assert_read_only_error_occurs(self, cmd_type: str, table_name: str, column: str,
+                                      row: str | None = None, data: str | None = None) -> None:
         """
         Runs a command on read-only cluster and expects an error to occur as a result.
         """
@@ -407,17 +407,17 @@ class HBaseDockerClient:
                                               f"The actual exception was:\n{e}")
         logger.info(f"{cmd_type.capitalize()} attempt on {self.name} failed as expected")
 
-    def assert_table_does_not_exist(self, table_name):
+    def assert_table_does_not_exist(self, table_name: str) -> None:
         logger.info(f"Verifying '{table_name}' is not in the list of tables on {self.name}")
         assert table_name not in self.list_tables(), \
             f"Expected table '{table_name}' to not exist on {self.name}"
 
-    def assert_table_exists(self, table_name):
+    def assert_table_exists(self, table_name: str) -> None:
         logger.info(f"Verifying '{table_name}' is in the list of tables on {self.name}")
         assert table_name in self.list_tables(), \
             f"Expected table '{table_name}' to exist on {self.name}"
 
-    def assert_table_row_count(self, table_name, expected_row_count):
+    def assert_table_row_count(self, table_name: str, expected_row_count: int) -> None:
         logger.info(f"Verifying table '{table_name}' on {self.name} has {expected_row_count} row(s)")
         output = self.count(table_name)
         match = re.search(r'^(\d+) row\(s\)$', output, re.MULTILINE)
@@ -426,13 +426,13 @@ class HBaseDockerClient:
             (f"Expected table '{table_name}' on {self.name} to have {expected_row_count} row(s). "
              f"Instead got {actual_row_count}")
 
-    def assert_get_output(self, table: str, row: str, cf: str, expected_data: str):
+    def assert_get_output(self, table: str, row: str, cf: str, expected_data: str) -> str:
         output = self.get(table, row, cf)
         assert f"value={expected_data}" in output, \
             f"Expected get command to retrieve a row with value={expected_data}. Output instead was:\n{output}"
         return output
 
-    def assert_region_count_for_table(self, table_name, expected_region_count):
+    def assert_region_count_for_table(self, table_name: str, expected_region_count: int) -> None:
         logger.info(f"Verifying table '{table_name}' has {expected_region_count} region(s)")
         output = self.list_regions(table_name)
         match = re.search(r'^ (\d+) rows$', output, re.MULTILINE)
@@ -442,7 +442,7 @@ class HBaseDockerClient:
              f"Instead got {actual_region_count}")
 
     @staticmethod
-    def __run_subprocess_command(command, error_msg, shell=False):
+    def __run_subprocess_command(command: list | str, error_msg: str, shell: bool = False) -> subprocess.CompletedProcess:
         if shell:
             cmd_msg = command
         else:
@@ -458,7 +458,7 @@ class HBaseDockerClient:
         return result
 
     @staticmethod
-    def wait_for_clusters_to_start(clusters: list):
+    def wait_for_clusters_to_start(clusters: list) -> None:
         for cluster in clusters:
             cluster.wait_for_cluster_to_start()
         logger.info("=" * 40)
@@ -466,7 +466,7 @@ class HBaseDockerClient:
         logger.info("=" * 40)
 
     @staticmethod
-    def are_containers_running(docker_compose_file=None) -> bool:
+    def are_containers_running(docker_compose_file: str | None = None) -> bool:
         logger.info("Checking if docker containers are running")
         command = ["docker", "compose"]
         if docker_compose_file:
@@ -476,7 +476,7 @@ class HBaseDockerClient:
         return bool(result.stdout.strip())
 
     @staticmethod
-    def start_or_restart_containers(docker_compose_file=None, data_store_root=None):
+    def start_or_restart_containers(docker_compose_file: str | None = None, data_store_root: str | None = None) -> None:
         if data_store_root:
             command = ["mkdir", "-p", f"{data_store_root}/data-store/hbase", f"{data_store_root}/data-store/run",
                        f"{data_store_root}/data-store/logs", f"{data_store_root}/data-store/zk"]
@@ -505,7 +505,7 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
-    def stop_containers(docker_compose_file=None, data_dir=None, sudo=False):
+    def stop_containers(docker_compose_file: str | None = None, data_dir: str | None = None, sudo: bool = False) -> None:
         command = "docker compose"
         if docker_compose_file:
             command += f" -f {docker_compose_file}"
