@@ -519,19 +519,3 @@ class HBaseDockerClient:
         HBaseDockerClient.__run_subprocess_command(command, "stop_containers failed", shell=True)
         logger.info("Successfully stopped docker containers")
 
-    @staticmethod
-    def clean_up_tables(active_cluster, replica_cluster):
-        """
-        Drops all tables on the active cluster and then runs 'refresh_meta' on the
-        read-replica cluster to remove those tables
-        """
-        tables = active_cluster.list_tables()
-        if tables:
-            logger.info(f"Removing all existing tables on {active_cluster.name}: {tables}")
-            for table in tables:
-                active_cluster.disable_table(table)
-                active_cluster.drop_table(table)
-            logger.info(f"Running 'refresh_meta' and 'refresh_hfiles' on {replica_cluster.name} to sync it with "
-                        f"{active_cluster.name}")
-            replica_cluster.refresh_meta()
-            replica_cluster.refresh_hfiles()

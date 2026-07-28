@@ -23,7 +23,7 @@ This test script verifies behavior for multiple bug fixes:
 import argparse
 
 from python.src.utils import (assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg,
-                              reset_cluster_setup, load_env_and_set_up_clients,
+                              clean_up_tables, reset_cluster_setup, load_env_and_set_up_clients,
                               create_table_and_test_active_and_replica_clusters,
                               log_script_start, log_script_end)
 
@@ -93,7 +93,7 @@ def main():
             cluster1.disable_read_only_mode()
 
         # Create table on active cluster
-        HBaseDockerClient.clean_up_tables(cluster1, cluster2)
+        clean_up_tables(cluster1, cluster2)
 
         # One iteration flips the read-only flag on each cluster and then flips it back.
         flip_num = 1

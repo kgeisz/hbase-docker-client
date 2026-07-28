@@ -155,6 +155,23 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
         HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
 
 
+def clean_up_tables(active_cluster: HBaseDockerClient, replica_cluster: HBaseDockerClient) -> None:
+    """
+    Drops all tables on the active cluster and then runs 'refresh_meta' on the
+    read-replica cluster to remove those tables
+    """
+    tables = active_cluster.list_tables()
+    if tables:
+        logger.info(f"Removing all existing tables on {active_cluster.name}: {tables}")
+        for table in tables:
+            active_cluster.disable_table(table)
+            active_cluster.drop_table(table)
+        logger.info(f"Running 'refresh_meta' and 'refresh_hfiles' on {replica_cluster.name} to sync it with "
+                    f"{active_cluster.name}")
+        replica_cluster.refresh_meta()
+        replica_cluster.refresh_hfiles()
+
+
 def swap_cluster_roles(new_active_cluster, new_replica_cluster, run_update_all_config=True):
     logger.info(f"Making {new_active_cluster.name} the active cluster and "
                 f"{new_replica_cluster.name} the replica cluster")

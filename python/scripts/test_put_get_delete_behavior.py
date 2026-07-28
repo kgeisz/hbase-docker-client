@@ -8,8 +8,8 @@ import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, DockerExecCommandTimeoutError
 from python.src.logger_config import get_logger
-from python.src.utils import (add_common_skip_table_cleanup_arg, load_env_and_set_up_clients, log_script_start,
-                              log_script_end)
+from python.src.utils import (add_common_skip_table_cleanup_arg, clean_up_tables, load_env_and_set_up_clients,
+                              log_script_start, log_script_end)
 
 logger = get_logger(__name__)
 
@@ -100,7 +100,7 @@ def main():
     column = f"{column_family}:c1"
 
     if not args.skip_table_cleanup_on_start:
-        HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
+        clean_up_tables(active_cluster, replica_cluster)
 
     # Create a table on the active cluster and have it appear on the read-replica cluster
     active_cluster.create_table(table_name, column_family)

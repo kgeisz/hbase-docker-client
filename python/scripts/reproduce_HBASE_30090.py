@@ -14,9 +14,8 @@ in one run.
 
 Usage: python3 reproduce_HBASE_30090.py
 """
-from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
-from python.src.utils import load_env_and_set_up_clients, log_script_start, log_script_end
+from python.src.utils import clean_up_tables, load_env_and_set_up_clients, log_script_start, log_script_end
 
 logger = get_logger(__name__)
 
@@ -34,7 +33,7 @@ def main():
             # Create table on active cluster
             cluster1.disable_read_only_mode()
             cluster2.enable_read_only_mode()
-            HBaseDockerClient.clean_up_tables(cluster1, cluster2)
+            clean_up_tables(cluster1, cluster2)
             cluster1.create_table('t1', column_family)
             cluster1.put('t1', 'r1', column_family, '1')
             cluster1.flush('t1')

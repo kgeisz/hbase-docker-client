@@ -21,7 +21,7 @@ from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
 from python.src.logger_config import get_logger
 from python.src.utils import (assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix,
-                              add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
+                              add_common_skip_container_stop_or_restart_arg, clean_up_tables, reset_cluster_setup,
                               load_env_and_set_up_clients, create_table_and_test_active_and_replica_clusters,
                               log_script_start, log_script_end)
 from time import sleep
@@ -86,7 +86,7 @@ def main():
                         data_store_root=data_store_root)
 
     assert_correct_active_cluster_suffix(cluster1, data_store_root)
-    HBaseDockerClient.clean_up_tables(active_cluster=cluster1, replica_cluster=cluster2)
+    clean_up_tables(active_cluster=cluster1, replica_cluster=cluster2)
 
     test_iterations = 5
     for i in range(1, test_iterations+1):
