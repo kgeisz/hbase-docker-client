@@ -6,15 +6,19 @@ there are no dead clusters
 """
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
-from python.src.utils import load_env_and_set_up_clients
+from python.src.utils import load_env_and_set_up_clients, log_script_start, log_script_end
 
 logger = get_logger(__name__)
 
 
 def main():
+    log_script_start(__file__, logger)
+
     active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
                                                                   cluster2_name="Read-Replica Cluster")
     HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == "__main__":

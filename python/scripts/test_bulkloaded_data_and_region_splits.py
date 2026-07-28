@@ -9,7 +9,8 @@ from python.src import get_logger, HBaseDockerClient
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import DockerExecCommandError
 from python.src.utils import (add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
-                              load_env_and_set_up_clients, swap_cluster_roles)
+                              load_env_and_set_up_clients, swap_cluster_roles,
+                              log_script_start, log_script_end)
 
 logger = get_logger(__name__)
 
@@ -58,6 +59,8 @@ def assert_cannot_split_regions_on_replica(replica_cluster: HBaseDockerClient, t
 
 
 def main():
+    log_script_start(__file__, logger)
+
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -216,6 +219,8 @@ def main():
         # Update the replica cluster and verify new region count
         cluster2.refresh_meta_and_hfiles()
         cluster2.assert_region_count_for_table(table, num_regions)
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':

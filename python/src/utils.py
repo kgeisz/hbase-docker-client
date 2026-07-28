@@ -15,6 +15,14 @@ from python.src.logger_config import get_logger
 logger = get_logger(__name__)
 
 
+def log_script_start(file: str, script_logger=None):
+    (script_logger or logger).info(f"========== START {os.path.basename(file)} ==========")
+
+
+def log_script_end(file: str, script_logger=None):
+    (script_logger or logger).info(f"========== END {os.path.basename(file)} ==========")
+
+
 def add_common_skip_table_cleanup_arg(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument('-t', '--skip-table-cleanup-on-start', action='store_true',
                         help='Skip cleaning up tables at the start of the test')

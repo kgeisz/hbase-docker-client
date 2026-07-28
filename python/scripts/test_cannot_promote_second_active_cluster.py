@@ -22,7 +22,8 @@ from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandE
 from python.src.logger_config import get_logger
 from python.src.utils import (assert_crud_operations_work_on_active_cluster, assert_correct_active_cluster_suffix,
                               add_common_skip_container_stop_or_restart_arg, reset_cluster_setup,
-                              load_env_and_set_up_clients, create_table_and_test_active_and_replica_clusters)
+                              load_env_and_set_up_clients, create_table_and_test_active_and_replica_clusters,
+                              log_script_start, log_script_end)
 from time import sleep
 
 logger = get_logger(__name__)
@@ -64,6 +65,7 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
 
 
 def main():
+    log_script_start(__file__, logger)
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -94,6 +96,7 @@ def main():
         else:
             run_test_iteration(active_cluster=cluster2, replica_cluster=cluster1, data_root=data_store_root)
         logger.info(f"Finished iteration {i} of {test_iterations}")
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':

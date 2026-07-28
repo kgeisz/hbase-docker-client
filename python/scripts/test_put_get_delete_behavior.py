@@ -8,7 +8,8 @@ import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, DockerExecCommandTimeoutError
 from python.src.logger_config import get_logger
-from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
+from python.src.utils import (add_common_skip_table_cleanup_arg, load_env_and_set_up_clients, log_script_start,
+                              log_script_end)
 
 logger = get_logger(__name__)
 
@@ -86,6 +87,8 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
 
 
 def main():
+    log_script_start(__file__, logger)
+
     parser = argparse.ArgumentParser()
     parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
@@ -104,6 +107,8 @@ def main():
     replica_cluster.refresh_meta()
 
     test_put_delete_behavior(active_cluster, replica_cluster, table_name, column)
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':

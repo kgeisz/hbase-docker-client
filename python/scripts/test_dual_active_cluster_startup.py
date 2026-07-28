@@ -7,13 +7,12 @@ running, and an error logged to the master log.
 Usage: python3 ./python/scripts/test_dual_active_cluster_startup.py
 """
 import argparse
-import subprocess
 import time
 
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
-from python.src.utils import load_env_and_set_up_clients
+from python.src.utils import load_env_and_set_up_clients, log_script_start, log_script_end
 
 logger = get_logger(__name__)
 
@@ -46,6 +45,8 @@ def assert_error_in_master_log(cluster: HBaseDockerClient):
 
 
 def main():
+    log_script_start(__file__, logger)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--clean-up-containers', action='store_true',
                         help='Stop Docker containers and revert cluster configurations to one '
@@ -113,6 +114,8 @@ def main():
         HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
         cluster1.disable_read_only_mode(run_update_all_config=False)
         cluster2.enable_read_only_mode(run_update_all_config=False)
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':

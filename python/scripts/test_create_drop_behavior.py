@@ -9,7 +9,8 @@ import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
-from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
+from python.src.utils import (add_common_skip_table_cleanup_arg, load_env_and_set_up_clients, log_script_start,
+                              log_script_end)
 
 logger = get_logger(__name__)
 
@@ -56,6 +57,8 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
 
 
 def main():
+    log_script_start(__file__, logger)
+
     parser = argparse.ArgumentParser()
     parser = add_common_skip_table_cleanup_arg(parser)
     args = parser.parse_args()
@@ -71,6 +74,8 @@ def main():
         HBaseDockerClient.clean_up_tables(active_cluster, replica_cluster)
 
     test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == "__main__":

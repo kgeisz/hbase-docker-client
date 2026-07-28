@@ -24,7 +24,8 @@ import argparse
 
 from python.src.utils import (assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg,
                               reset_cluster_setup, load_env_and_set_up_clients,
-                              create_table_and_test_active_and_replica_clusters)
+                              create_table_and_test_active_and_replica_clusters,
+                              log_script_start, log_script_end)
 
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
@@ -54,6 +55,8 @@ def create_table_and_test_clusters_then_flip_read_only_flag(cluster1, cluster2, 
 
 
 def main():
+    log_script_start(__file__, logger)
+
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -105,6 +108,8 @@ def main():
             logger.info(f"Finished read-only flag flip {flip_num} of {read_only_flag_flips_per_iteration}")
             flip_num += 1
         logger.info(f"Finished iteration {i} of {test_iterations}")
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':

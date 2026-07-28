@@ -16,12 +16,13 @@ Usage: python3 reproduce_HBASE_30090.py
 """
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
-from python.src.utils import load_env_and_set_up_clients
+from python.src.utils import load_env_and_set_up_clients, log_script_start, log_script_end
 
 logger = get_logger(__name__)
 
 
 def main():
+    log_script_start(__file__, logger)
     cluster1, cluster2 = load_env_and_set_up_clients()
     table_name = "t1"
     column_family = "cf"
@@ -104,6 +105,8 @@ def main():
                                    f"the following message:\n{expected_msg}\n"
                                    f"Got the following instead:\n{str(e)}")
         logger.info(f"Finished iteration {i} of {iterations}")
+
+    log_script_end(__file__, logger)
 
 
 if __name__ == '__main__':
