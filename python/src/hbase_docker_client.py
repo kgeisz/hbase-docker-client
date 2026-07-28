@@ -522,4 +522,3 @@ class HBaseDockerClient:
         logger.info(f"{log_msg}")
         HBaseDockerClient.__run_subprocess_command(command, "stop_containers failed", shell=True)
         logger.info("Successfully stopped docker containers")
-
