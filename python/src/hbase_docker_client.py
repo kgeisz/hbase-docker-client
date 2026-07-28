@@ -206,7 +206,8 @@ class HBaseDockerClient:
         logger.debug(f"Got data:\n{output}")
         return output
 
-    def delete(self, table_name: str, row: str, column: str, timestamp: int | None = None, spec_map: str | None = None) -> None:
+    def delete(self, table_name: str, row: str, column: str, timestamp: int | None = None,
+               spec_map: str | None = None) -> None:
         logger.info(f"Deleting data from table '{table_name}' on {self.name}")
         delete_cmd = f"delete '{table_name}', '{row}', '{column}'"
         if timestamp:
@@ -276,7 +277,8 @@ class HBaseDockerClient:
 
         self.run_hbase_shell_command(command)
 
-    def major_compact_and_wait(self, table_or_region: str, column_family: str | None = None, mob: str | None = None, timeout: int = 30, sleep_time: int = 1) -> bool:
+    def major_compact_and_wait(self, table_or_region: str, column_family: str | None = None, mob: str | None = None,
+                               timeout: int = 30, sleep_time: int = 1) -> bool:
         """Triggers major compaction on a table and blocks until it completes."""
         logger.info(f"Triggering major compaction on '{table_or_region}' on {self.name}...")
         self.major_compact(table_or_region, column_family, mob)
@@ -442,7 +444,8 @@ class HBaseDockerClient:
              f"Instead got {actual_region_count}")
 
     @staticmethod
-    def __run_subprocess_command(command: list | str, error_msg: str, shell: bool = False) -> subprocess.CompletedProcess:
+    def __run_subprocess_command(command: list | str, error_msg: str,
+                                 shell: bool = False) -> subprocess.CompletedProcess:
         if shell:
             cmd_msg = command
         else:
@@ -505,7 +508,8 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
-    def stop_containers(docker_compose_file: str | None = None, data_dir: str | None = None, sudo: bool = False) -> None:
+    def stop_containers(docker_compose_file: str | None = None, data_dir: str | None = None,
+                        sudo: bool = False) -> None:
         command = "docker compose"
         if docker_compose_file:
             command += f" -f {docker_compose_file}"
