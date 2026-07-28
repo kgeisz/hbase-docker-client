@@ -6,19 +6,24 @@ operations on the read-replica cluster result in an error.
 """
 import argparse
 
-from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
+from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, DockerExecCommandTimeoutError
 from python.src.logger_config import get_logger
 from python.src.utils import add_common_skip_table_cleanup_arg, load_env_and_set_up_clients
 
 logger = get_logger(__name__)
 
 
-def assert_cannot_flush_table_on_replica(replica_cluster: HBaseDockerClient, table: str):
+def assert_cannot_flush_table_on_replica(replica_cluster: HBaseDockerClient, table: str, timeout: int = 60):
     logger.info(f"Verifying table '{table}' cannot be flushed on {replica_cluster.name} "
                 f"because read-only mode is enabled")
     try:
-        replica_cluster.split(table)
+        replica_cluster.flush(table, timeout=timeout)
         raise RuntimeError(f"Expected flush on replica cluster {replica_cluster.name} to result in an error")
+    except DockerExecCommandTimeoutError:
+        raise RuntimeError(
+            f"TIMEOUT: flush on replica cluster '{replica_cluster.name}' did not complete within "
+            f"{timeout} seconds. This may indicate HBASE-30301 has not been fixed on this cluster."
+        )
     except DockerExecCommandError as e:
         expected_error_msg = ("org.apache.hadoop.hbase.WriteAttemptedOnReadOnlyClusterException: "
                               "Operation not allowed in Read-Only Mode")

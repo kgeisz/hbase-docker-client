@@ -20,6 +20,10 @@ class HBaseShellCommandError(DockerExecCommandError):
     pass
 
 
+class DockerExecCommandTimeoutError(DockerExecCommandError):
+    pass
+
+
 class HBaseDockerClient:
     def __init__(self, container_name, local_conf, hbase_ui_port=16010, cluster_name="HBase Cluster",
                  max_retries=12, sleep_time=5):
@@ -34,7 +38,7 @@ class HBaseDockerClient:
     def name(self):
         return self._cluster_name
 
-    def run_docker_exec_command(self, bash_cmd):
+    def run_docker_exec_command(self, bash_cmd, timeout=None):
         """
         Uses 'docker exec' to run the provided Bash command in the object's Docker container.
         The command looks like: docker exec <container> bash -c <bash_cmd>
@@ -44,7 +48,14 @@ class HBaseDockerClient:
         cmd = ["docker", "exec", self._container_name, "bash", "-c", f'''{bash_cmd}''']
         cmd_str = ' '.join(cmd)
         logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
-        process = subprocess.run(cmd, capture_output=True)
+        try:
+            process = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise DockerExecCommandTimeoutError(
+                f"Command timed out after {timeout}s on {self._cluster_name} "
+                f"({self._container_name}): {bash_cmd}\n"
+                f"The command used to run this was: {cmd_str}\n"
+            )
         stdout = process.stdout.decode('utf-8')
         if process.returncode != 0:
             raise DockerExecCommandError(
@@ -55,14 +66,18 @@ class HBaseDockerClient:
             )
         return stdout
 
-    def run_hbase_shell_command(self, hbase_cmd):
+    def run_hbase_shell_command(self, hbase_cmd, timeout=None):
         """
         Uses 'docker exec' to run the provided HBase shell command in the object's Docker container.
         The command looks like: docker exec <container> bash -c hbase shell -n <<< "<hbase_cmd>"
         """
         hbase_shell_cmd = f'''hbase shell -n <<< "{hbase_cmd}"'''
         try:
-            return self.run_docker_exec_command(hbase_shell_cmd)
+            return self.run_docker_exec_command(hbase_shell_cmd, timeout=timeout)
+        except DockerExecCommandTimeoutError:
+            # DockerExecCommandTimeoutError is a subclass of DockerExecCommandError, so we need to make sure
+            # it's specifically caught and re-raised. Otherwise, it's swallowed when catching DockerExecCommandError
+            raise
         except DockerExecCommandError as e:
             raise HBaseShellCommandError(e)
 
@@ -216,9 +231,9 @@ class HBaseDockerClient:
             count_cmd += f"{spec}"
         return self.run_hbase_shell_command(count_cmd)
 
-    def flush(self, table_name):
+    def flush(self, table_name, timeout=None):
         logger.debug(f"Flushing table '{table_name}' on {self.name}")
-        self.run_hbase_shell_command(f"flush '{table_name}'")
+        self.run_hbase_shell_command(f"flush '{table_name}'", timeout=timeout)
 
     def split(self, thing_to_split, split_key=None):
         log_msg = f"Splitting '{thing_to_split}'"
