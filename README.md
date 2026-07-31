@@ -80,6 +80,109 @@ Other available test scripts in `python/scripts/`:
 - `test_create_drop_behavior.py` — Tests table create/drop on the active cluster and rejection on the replica.
 - `test_read_only_flag_flipping.py` — Flips the read-only flag between clusters and validates behavior.
 
+## HBaseDockerClient
+
+The core class in `python/src/hbase_docker_client.py` wraps `docker exec` to run HBase shell commands against a named container from outside it. Each instance represents one cluster.
+
+### Constructor
+
+```python
+HBaseDockerClient(
+    container_name="hbase-docker",
+    local_conf="conf1/hbase-site.xml",
+    hbase_ui_port=16010,
+    cluster_name="Active Cluster",
+)
+```
+
+- `container_name` — Docker container to run commands against.
+- `local_conf` — Path to the local `hbase-site.xml` (mounted as a Docker volume, so edits propagate into the container).
+- `hbase_ui_port` — Port for the HBase Master UI health check.
+- `cluster_name` — Human-readable label used in log messages.
+
+### Command Execution
+
+| Method | Description |
+|--------|-------------|
+| `run_docker_exec_command(bash_cmd)` | Runs an arbitrary bash command inside the container via `docker exec`. |
+| `run_hbase_shell_command(hbase_cmd)` | Runs an HBase shell command inside the container. |
+
+### Cluster Health
+
+| Method | Description |
+|--------|-------------|
+| `wait_for_hbase_ui()` | Polls the Master UI until it returns HTTP 200. |
+| `check_server_status()` | Validates the cluster has the expected number of masters, region servers, and no dead servers. |
+| `wait_for_cluster_to_start()` | Combines `wait_for_hbase_ui` and `check_server_status`. |
+
+### Table Operations
+
+| Method | Description |
+|--------|-------------|
+| `create_table(table_name, column_family)` | Creates a table with one column family. |
+| `disable_table(table_name)` | Disables a table. |
+| `drop_table(table_name)` | Drops a table. |
+| `list_tables()` | Returns the list of tables as a Python list. |
+| `list_regions(table_name)` | Returns region info for a table. |
+
+### Data Operations
+
+| Method | Description |
+|--------|-------------|
+| `put(table_name, row, column, data)` | Inserts a cell value. |
+| `get(table_name, row, column)` | Reads a cell value. |
+| `delete(table_name, row, column)` | Deletes a cell. |
+| `scan(table_name)` | Scans an entire table. |
+| `count(table_name)` | Counts rows in a table. |
+
+### Maintenance
+
+| Method | Description |
+|--------|-------------|
+| `flush(table_name)` | Flushes the memstore to HFiles. |
+| `split(thing_to_split, split_key)` | Triggers an async region split. |
+| `flush_and_split(thing_to_split, split_key)` | Flushes then splits. |
+| `major_compact(table_or_region)` | Triggers major compaction. |
+| `major_compact_and_wait(table_or_region)` | Triggers major compaction and blocks until complete. |
+| `catalogjanitor_run()` | Forces cleanup of split parent regions in `hbase:meta`. |
+
+### Replica Sync
+
+| Method | Description |
+|--------|-------------|
+| `refresh_meta()` | Refreshes table metadata on the replica. |
+| `refresh_hfiles()` | Refreshes data files on the replica. |
+| `refresh_meta_and_hfiles()` | Runs both in sequence. |
+
+### Read-Only Mode
+
+| Method | Description |
+|--------|-------------|
+| `enable_read_only_mode()` | Sets `hbase.global.readonly.enabled=true` in the local `hbase-site.xml` and runs `update_all_config` to apply dynamically. |
+| `disable_read_only_mode()` | Sets `hbase.global.readonly.enabled=false` and applies dynamically. |
+
+### Assertion Helpers
+
+Used by test scripts to validate expected state:
+
+| Method | Description |
+|--------|-------------|
+| `assert_read_only_error_occurs(cmd_type, table_name, ...)` | Runs a write command and asserts it raises `WriteAttemptedOnReadOnlyClusterException`. |
+| `assert_table_exists(table_name)` | Asserts the table is in the table list. |
+| `assert_table_does_not_exist(table_name)` | Asserts the table is not in the table list. |
+| `assert_table_row_count(table_name, expected)` | Asserts the table has the expected row count. |
+| `assert_get_output(table, row, cf, expected_data)` | Asserts a get returns the expected value. |
+| `assert_region_count_for_table(table_name, expected)` | Asserts the table has the expected number of regions. |
+
+### Static Container Lifecycle Methods
+
+| Method | Description |
+|--------|-------------|
+| `start_or_restart_containers(docker_compose_file)` | Starts or restarts containers depending on current state. |
+| `stop_containers(docker_compose_file, data_dir)` | Stops containers and optionally removes the data directory. |
+| `are_containers_running(docker_compose_file)` | Returns whether containers are currently running. |
+| `set_up_data_store_dir(data_store_root)` | Creates the data store directory structure with appropriate permissions. |
+
 ## Architecture
 
 The `docker-compose.yml` starts two HBase containers that share the same data store (`tmp/data-store/hbase`) via mounted volumes:
