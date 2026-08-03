@@ -260,3 +260,51 @@ The `docker-compose.yml` starts two HBase containers that share the same data st
 - **Replica Cluster** (`hbase-docker-2`): Configured via `conf2/hbase-site.xml` with `hbase.global.readonly.enabled=true`. Master UI on port 26010.
 
 The replica sees changes from the active cluster only after an explicit sync: flush the table on the active cluster, then run `refresh_meta` and `refresh_hfiles` on the replica.
+
+## Interactive Python Console
+
+The `python/scripts/python_console_env_setup.py` script lets you quickly set up `HBaseDockerClient` objects in an interactive Python shell for ad-hoc cluster interaction.
+
+### Prerequisites
+
+- `.env` is configured for your environment
+- Containers are running (`docker compose up -d`)
+- Python virtual environment is activated
+
+### Usage
+
+Open a Python console from the project root and run:
+
+```python
+exec(open("python/scripts/python_console_env_setup.py").read())
+```
+
+This creates two client objects:
+
+- `cluster1` — the active cluster
+- `cluster2` — the replica cluster
+
+All `.env` variables are also loaded into scope (e.g. `hbase_image`, `active_cluster_port`).
+
+### Examples
+
+Put data on the active cluster and sync it to the replica:
+
+```python
+cluster1.put("my_table", "row1", "cf:col1", "value1")
+cluster1.flush("my_table")
+cluster2.refresh_meta_and_hfiles()
+cluster2.get("my_table", "row1", "cf:col1")
+```
+
+Make the active cluster read-only:
+
+```python
+cluster1.enable_read_only_mode()
+```
+
+Make the replica cluster writable:
+
+```python
+cluster2.disable_read_only_mode()
+```
