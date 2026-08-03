@@ -90,6 +90,7 @@ python3 ./python/scripts/verify_hbase_start.py
 All scripts are in `python/scripts/` and run with:
 
 ```bash
+# Make sure Python environment is active
 python3 ./python/scripts/<script_name>.py [options]
 ```
 
