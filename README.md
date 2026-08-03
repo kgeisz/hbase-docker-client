@@ -85,10 +85,69 @@ python3 python/proto/proto_compiler.py
 python3 ./python/scripts/verify_hbase_start.py
 ```
 
-Other available test scripts in `python/scripts/`:
-- `test_put_get_delete_behavior.py` — Verifies put/delete on the active cluster and data visibility on the replica.
-- `test_create_drop_behavior.py` — Tests table create/drop on the active cluster and rejection on the replica.
-- `test_read_only_flag_flipping.py` — Flips the read-only flag between clusters and validates behavior.
+## Test Scripts
+
+All scripts are in `python/scripts/` and run with:
+
+```bash
+python3 ./python/scripts/<script_name>.py [options]
+```
+
+### `verify_hbase_start.py`
+
+Polls the HBase Web UIs on both clusters until they return HTTP 200, then confirms there are no dead servers.
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-container-start-or-restart` | `-s` | `false` | Skip stopping, starting, and waiting for containers |
+
+### `test_put_get_delete_behavior.py`
+
+Verifies put/delete on the active cluster, data visibility on the replica after flush and refresh, and that writes on the replica are rejected. Also checks that `flush` on the replica does not hang (HBASE-30301).
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-table-cleanup-on-start` | `-t` | `false` | Skip cleaning up tables at the start of the test |
+
+### `test_create_drop_behavior.py`
+
+Tests table create/drop on the active cluster and verifies these operations are rejected on the replica.
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-table-cleanup-on-start` | `-t` | `false` | Skip cleaning up tables at the start of the test |
+
+### `test_read_only_flag_flipping.py`
+
+Repeatedly flips the read-only flag between two clusters and validates that the `active-cluster` suffix file is updated correctly each time.
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-container-start-or-restart` | `-s` | `false` | Skip stopping, starting, and waiting for containers |
+
+### `test_bulkloaded_data_and_region_splits.py`
+
+Tests bulk loading and region splits across clusters, including role swaps and visibility after refresh.
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-container-start-or-restart` | `-s` | `false` | Skip stopping, starting, and waiting for containers |
+
+### `test_cannot_promote_second_active_cluster.py`
+
+Verifies that a replica cluster cannot be promoted to active when another active cluster already exists on the same shared data store (HBASE-30220).
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--skip-container-start-or-restart` | `-s` | `false` | Skip stopping, starting, and waiting for containers |
+
+### `test_dual_active_cluster_startup.py`
+
+Starts two clusters both configured as active against the same data store and verifies exactly one fails to start.
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--clean-up-containers` | `-c` | `false` | Stop containers and revert cluster configurations after the test finishes |
 
 ## HBaseDockerClient
 
