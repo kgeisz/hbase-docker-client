@@ -70,8 +70,18 @@ This starts two HBase containers: an active cluster and a read-replica cluster.
 export PYTHONPATH="$(pwd)"
 ```
 
-3. Run a test script:
+3. Compile `ActiveClusterSuffix.proto`
 ```bash
+# Optional: Copy file from HBase repo to ensure you have the latest version
+cp hbase/hbase-protocol-shaded/src/main/protobuf/server/ActiveClusterSuffix.proto python/proto
+
+# Make sure Python environment is active
+python3 python/proto/proto_compiler.py
+```
+
+5. Run a test script:
+```bash
+# Make sure Python environment is active
 python3 ./python/scripts/verify_hbase_start.py
 ```
 
