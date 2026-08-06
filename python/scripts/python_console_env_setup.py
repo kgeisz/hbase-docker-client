@@ -1,9 +1,9 @@
 """
 Use this script to quickly set up HBaseDockerClient objects in your Python console.
 
-To set up the environment, start the Python console and run (path may need to be adjusted):
+To set up the environment, start the Python console from the hbase-docker-client directory and run:
 
-exec(open("python/scripts/python_console_env_setup.py").read())
+from python.scripts.python_console_env_setup import *
 """
 from python.src.environment_loader import get_env
 from python.src.utils import load_env_and_set_up_clients

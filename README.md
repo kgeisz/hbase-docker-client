@@ -274,10 +274,10 @@ The `python/scripts/python_console_env_setup.py` script lets you quickly set up 
 
 ### Usage
 
-Open a Python console from the project root and run:
+Start a Python console from the project root and run:
 
 ```python
-exec(open("python/scripts/python_console_env_setup.py").read())
+from python.scripts.python_console_env_setup import *
 ```
 
 This creates two client objects:
