@@ -55,4 +55,8 @@
     <name>hbase.master.hbck.chore.interval</name>
     <value>0</value>
   </property>
+  <property>
+    <name>hbase.zookeeper.property.4lw.commands.whitelist</name>
+    <value>ruok,stat</value>
+  </property>
 </configuration>
