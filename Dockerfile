@@ -49,7 +49,9 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk \
     DATA_DIR=/data-store
 
 # Install necessary runtime packages
-RUN INITRD=no DEBIAN_FRONTEND=noninteractive microdnf update -y && microdnf install -y unzip gzip wget hostname maven git diffutils vim openssh-clients python3 procps
+RUN INITRD=no DEBIAN_FRONTEND=noninteractive microdnf update -y && \
+    microdnf install -y unzip gzip wget hostname maven git diffutils vim openssh-clients python3 \
+                        procps nc iputils net-tools
 
 # Copy the built HBase binaries from the build-stage
 COPY --from=build-stage /opt/hbase-src/hbase-assembly/target/hbase-*-SNAPSHOT-bin.tar.gz /opt/
@@ -59,6 +61,7 @@ RUN tar -xzf /opt/hbase-*-SNAPSHOT-bin.tar.gz -C /opt \
     && ln -s /opt/hbase-*-SNAPSHOT /opt/hbase \
     && rm /opt/hbase-*-SNAPSHOT-bin.tar.gz
 
+# Copy hadoop-mapreduce-client-common jar to allow bulkloading data
 COPY --from=build-stage /root/.m2/repository/org/apache/hadoop/hadoop-mapreduce-client-common/*/hadoop-mapreduce-client-common-*.jar \
                         ${HBASE_HOME}/lib/
 
