@@ -101,6 +101,44 @@ class HBaseDockerClient:
                            f"{self._max_retries} attempts. "
                            f"Last raised exception was: {last_exception}")
 
+    def wait_for_master_initialization(self) -> bool:
+        """Greps HBase logs for 'Master has completed initialization'."""
+        logger.info(f"Waiting for Master initialization: {self._cluster_name} ({self._container_name})")
+        grep_cmd = 'grep "Master has completed initialization" /opt/hbase/logs/*'
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                output = self.run_docker_exec_command(grep_cmd)
+                logger.info(f"SUCCESS: {self._cluster_name} Master has completed initialization.")
+                logger.debug(f"Grep result: {output.strip()}")
+                return True
+            except DockerExecCommandError:
+                pass
+            logging.info(f"Waiting {self._sleep_time} seconds before checking Master initialization again")
+            time.sleep(self._sleep_time)
+
+        raise RuntimeError(
+            f"\nTIMEOUT: {self._cluster_name} Master failed to initialize after "
+            f"{self._max_retries} attempts.")
+
+    def wait_for_region_server_initialization(self) -> bool:
+        """Greps HBase logs for RegionServer 'Serving as' message."""
+        logger.info(f"Waiting for RegionServer initialization: {self._cluster_name} ({self._container_name})")
+        grep_cmd = f'grep -E "Serving as {self._container_name}," /opt/hbase/logs/*'
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                output = self.run_docker_exec_command(grep_cmd)
+                logger.info(f"SUCCESS: {self._cluster_name} RegionServer is serving.")
+                logger.debug(f"Grep result: {output.strip()}")
+                return True
+            except DockerExecCommandError:
+                pass
+            logging.info(f"Waiting {self._sleep_time} seconds before checking RegionServer initialization again")
+            time.sleep(self._sleep_time)
+
+        raise RuntimeError(
+            f"\nTIMEOUT: {self._cluster_name} RegionServer failed to initialize after "
+            f"{self._max_retries} attempts.")
+
     def check_server_status(self, desired_status: dict | None = None) -> bool:
         """Runs 'status' inside the HBase shell and validates the output."""
         if desired_status is None:
@@ -145,6 +183,8 @@ class HBaseDockerClient:
     def wait_for_cluster_to_start(self) -> None:
         """curls the cluster's HBase UI to make sure it is up and then makes sure all desired servers are up"""
         self.wait_for_hbase_ui()
+        self.wait_for_master_initialization()
+        self.wait_for_region_server_initialization()
         self.check_server_status()
 
     def create_table(self, table_name: str, column_family: str) -> bool:
