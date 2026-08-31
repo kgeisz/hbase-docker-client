@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import ast
 import logging
+import os
 import re
 import requests
 import subprocess
@@ -26,13 +27,15 @@ class DockerExecCommandTimeoutError(DockerExecCommandError):
 
 class HBaseDockerClient:
     def __init__(self, container_name: str, local_conf: str, hbase_ui_port: int = 16010,
-                 cluster_name: str = "HBase Cluster", max_retries: int = 12, sleep_time: int = 5) -> None:
+                 cluster_name: str = "HBase Cluster", max_retries: int = 12, sleep_time: int = 5,
+                 hbase_host: str = "localhost") -> None:
         self._container_name = container_name
         self._local_conf = local_conf
         self._hbase_ui_port = hbase_ui_port
         self._cluster_name = cluster_name
         self._max_retries = max_retries
         self._sleep_time = sleep_time
+        self._hbase_host = hbase_host
 
     @property
     def name(self) -> str:
@@ -83,7 +86,8 @@ class HBaseDockerClient:
 
     def wait_for_hbase_ui(self) -> bool:
         """Checks for a 200 OK on the HBase Master UI."""
-        url = f"http://localhost:{self._hbase_ui_port}"
+        # Read HBASE_HOST from environment, falling back to 'localhost' for host-native execution
+        url = f"http://{self._hbase_host}:{self._hbase_ui_port}"
         logger.info(f"Waiting for HBase UI: {self._cluster_name} on {url}")
         last_exception = None
         for attempt in range(1, self._max_retries + 1):
