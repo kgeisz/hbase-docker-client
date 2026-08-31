@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import ast
 import logging
-import os
 import re
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+import docker
 import requests
 import subprocess
 import time
@@ -36,6 +38,7 @@ class HBaseDockerClient:
         self._max_retries = max_retries
         self._sleep_time = sleep_time
         self._hbase_host = hbase_host
+        self._docker_client = docker.from_env()
 
     @property
     def name(self) -> str:
@@ -43,31 +46,48 @@ class HBaseDockerClient:
 
     def run_docker_exec_command(self, bash_cmd: str, timeout: int | None = None) -> str:
         """
-        Uses 'docker exec' to run the provided Bash command in the object's Docker container.
-        The command looks like: docker exec <container> bash -c <bash_cmd>
-        Note: In the Terminal, we usually put double quotes around everything after "-c",
-        but doing that with subprocess.run() results in a failure.
+        Uses the Docker SDK to exec a Bash command in the object's Docker container.
+        Equivalent to: docker exec <container> bash -c <bash_cmd>
         """
-        cmd = ["docker", "exec", self._container_name, "bash", "-c", f'''{bash_cmd}''']
-        cmd_str = ' '.join(cmd)
+        cmd = ["bash", "-c", bash_cmd]
+        cmd_str = f"docker exec {self._container_name} bash -c {bash_cmd}"
         logger.debug(f"Running command on {self._cluster_name}: {cmd_str}")
+
         try:
-            process = subprocess.run(cmd, capture_output=True, timeout=timeout)
-        except subprocess.TimeoutExpired:
-            raise DockerExecCommandTimeoutError(
-                f"Command timed out after {timeout}s on {self._cluster_name} "
-                f"({self._container_name}): {bash_cmd}\n"
-                f"The command used to run this was: {cmd_str}\n"
-            )
-        stdout = process.stdout.decode('utf-8')
-        if process.returncode != 0:
+            container = self._docker_client.containers.get(self._container_name)
+
+            if timeout is not None:
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(container.exec_run, cmd, demux=True)
+                    try:
+                        result = future.result(timeout=timeout)
+                    except FuturesTimeoutError:
+                        raise DockerExecCommandTimeoutError(
+                            f"Command timed out after {timeout}s on {self._cluster_name} "
+                            f"({self._container_name}): {bash_cmd}\n"
+                            f"The command used to run this was: {cmd_str}\n"
+                        )
+            else:
+                result = container.exec_run(cmd, demux=True)
+        except DockerExecCommandError:
+            raise
+        except docker.errors.DockerException as e:
             raise DockerExecCommandError(
                 f"The following command failed on {self._cluster_name} ({self._container_name}): {bash_cmd}\n"
                 f"The command used to run this was: {cmd_str}\n"
-                f"The command's STDERR was:\n{process.stderr.decode('utf-8')}\n"
-                f"The command's STDOUT was:\n{stdout}\n"
+                f"Docker error: {e}\n"
             )
-        return stdout
+
+        exit_code, (stdout, stderr) = result
+        stdout_str = (stdout or b'').decode('utf-8')
+        if exit_code != 0:
+            raise DockerExecCommandError(
+                f"The following command failed on {self._cluster_name} ({self._container_name}): {bash_cmd}\n"
+                f"The command used to run this was: {cmd_str}\n"
+                f"The command's STDERR was:\n{(stderr or b'').decode('utf-8')}\n"
+                f"The command's STDOUT was:\n{stdout_str}\n"
+            )
+        return stdout_str
 
     def run_hbase_shell_command(self, hbase_cmd: str, timeout: int | None = None) -> str:
         """
@@ -170,11 +190,10 @@ class HBaseDockerClient:
                                    f"components are ready...")
                     logger.info(f"HBase 'status' command output:\n{output}")
 
-            except subprocess.CalledProcessError:
+            except HBaseShellCommandError:
                 pass
 
-            logging.info(f"Waiting {self._sleep_time} seconds before getting status on "
-                         f"{self.name} again")
+            logging.info(f"Waiting {self._sleep_time} seconds before getting status on {self.name} again")
             time.sleep(self._sleep_time)
 
         raise RuntimeError(
