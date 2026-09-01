@@ -17,10 +17,17 @@ logger = get_logger(__name__)
 
 def log_script_start(file: str, script_logger=None):
     (script_logger or logger).info(f"========== START {os.path.basename(file)} ==========")
+    return time.time()
 
 
-def log_script_end(file: str, script_logger=None):
-    (script_logger or logger).info(f"========== END {os.path.basename(file)} ==========")
+def log_script_end(file: str, script_logger=None, start_time=None):
+    elapsed = ""
+    if start_time is not None:
+        total_seconds = int(time.time() - start_time)
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        elapsed = f" ({hours}h {minutes}m {seconds}s)"
+    (script_logger or logger).info(f"========== END {os.path.basename(file)}{elapsed} ==========")
 
 
 def add_common_skip_table_cleanup_arg(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:

@@ -59,7 +59,7 @@ def assert_cannot_split_regions_on_replica(replica_cluster: HBaseDockerClient, t
 
 
 def main():
-    log_script_start(__file__, logger)
+    start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
@@ -220,7 +220,7 @@ def main():
         cluster2.refresh_meta_and_hfiles()
         cluster2.assert_region_count_for_table(table, num_regions)
 
-    log_script_end(__file__, logger)
+    log_script_end(__file__, logger, start_time)
 
 
 if __name__ == '__main__':

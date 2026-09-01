@@ -59,7 +59,7 @@ def wait_for_active_cluster_file(data_store_root: str, timeout_seconds: int = 30
 
 
 def main():
-    log_script_start(__file__, logger)
+    start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--clean-up-containers', action='store_true',
@@ -133,7 +133,7 @@ def main():
         cluster1.disable_read_only_mode(run_update_all_config=False)
         cluster2.enable_read_only_mode(run_update_all_config=False)
 
-    log_script_end(__file__, logger)
+    log_script_end(__file__, logger, start_time)
 
 
 if __name__ == '__main__':

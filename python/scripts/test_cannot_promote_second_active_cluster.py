@@ -65,7 +65,7 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
 
 
 def main():
-    log_script_start(__file__, logger)
+    start_time = log_script_start(__file__, logger)
     parser = argparse.ArgumentParser()
     parser = add_common_skip_container_stop_or_restart_arg(parser)
     args = parser.parse_args()
@@ -96,7 +96,7 @@ def main():
         else:
             run_test_iteration(active_cluster=cluster2, replica_cluster=cluster1, data_root=data_store_root)
         logger.info(f"Finished iteration {i} of {test_iterations}")
-    log_script_end(__file__, logger)
+    log_script_end(__file__, logger, start_time)
 
 
 if __name__ == '__main__':
