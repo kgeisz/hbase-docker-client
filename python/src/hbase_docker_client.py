@@ -598,6 +598,15 @@ class HBaseDockerClient:
         logger.info(f"docker compose {action} completed successfully")
 
     @staticmethod
+    def start_service(service_name: str, docker_compose_file: str | None = None) -> None:
+        logger.info(f"Starting docker compose service: {service_name}")
+        command = ["docker", "compose"]
+        if docker_compose_file:
+            command += ["-f", docker_compose_file]
+        command += ["up", "-d", service_name]
+        HBaseDockerClient.__run_subprocess_command(command, f"Failed to start service '{service_name}'")
+
+    @staticmethod
     def stop_containers(docker_compose_file: str | None = None, data_dir: str | None = None,
                         sudo: bool = False) -> None:
         command = "docker compose"
