@@ -104,6 +104,18 @@ class HBaseDockerClient:
         except DockerExecCommandError as e:
             raise HBaseShellCommandError(e)
 
+    def _get_pid_from_jps(self, process_name: str) -> int | None:
+        """Runs jps inside the container and returns the PID of the named process, or None."""
+        try:
+            output = self.run_docker_exec_command("jps")
+            for line in output.strip().splitlines():
+                parts = line.split()
+                if len(parts) == 2 and parts[1] == process_name:
+                    return int(parts[0])
+        except DockerExecCommandError:
+            pass
+        return None
+
     def wait_for_hbase_ui(self) -> bool:
         """Checks for a 200 OK on the HBase Master UI."""
         # Read HBASE_HOST from environment, falling back to 'localhost' for host-native execution
@@ -126,17 +138,22 @@ class HBaseDockerClient:
                            f"Last raised exception was: {last_exception}")
 
     def wait_for_master_initialization(self) -> bool:
-        """Greps HBase logs for 'Master has completed initialization'."""
+        """Waits for the current HMaster process to log 'Master has completed initialization'."""
         logger.info(f"Waiting for Master initialization: {self._cluster_name} ({self._container_name})")
-        grep_cmd = 'grep "Master has completed initialization" /opt/hbase/logs/*'
         for attempt in range(1, self._max_retries + 1):
-            try:
-                output = self.run_docker_exec_command(grep_cmd)
-                logger.info(f"SUCCESS: {self._cluster_name} Master has completed initialization.")
-                logger.debug(f"Grep result: {output.strip()}")
-                return True
-            except DockerExecCommandError:
-                pass
+            pid = self._get_pid_from_jps("HMaster")
+            if pid is not None:
+                awk_cmd = (
+                    f"awk '/env:JVM_PID={pid}/{{seen=1; found=0}} "
+                    f"seen && /Master has completed initialization/{{found=1}} "
+                    f"END{{exit !found}}' /opt/hbase/logs/hbase-*-master-*.log"
+                )
+                try:
+                    self.run_docker_exec_command(awk_cmd)
+                    logger.info(f"SUCCESS: {self._cluster_name} Master has completed initialization.")
+                    return True
+                except DockerExecCommandError:
+                    pass
             logging.info(f"Waiting {self._sleep_time} seconds before checking Master initialization again")
             time.sleep(self._sleep_time)
 
@@ -145,17 +162,22 @@ class HBaseDockerClient:
             f"{self._max_retries} attempts.")
 
     def wait_for_region_server_initialization(self) -> bool:
-        """Greps HBase logs for RegionServer 'Serving as' message."""
+        """Waits for the current HRegionServer process to log 'Serving as' message."""
         logger.info(f"Waiting for RegionServer initialization: {self._cluster_name} ({self._container_name})")
-        grep_cmd = f'grep -E "Serving as {self._container_name}," /opt/hbase/logs/*'
         for attempt in range(1, self._max_retries + 1):
-            try:
-                output = self.run_docker_exec_command(grep_cmd)
-                logger.info(f"SUCCESS: {self._cluster_name} RegionServer is serving.")
-                logger.debug(f"Grep result: {output.strip()}")
-                return True
-            except DockerExecCommandError:
-                pass
+            pid = self._get_pid_from_jps("HRegionServer")
+            if pid is not None:
+                awk_cmd = (
+                    f"awk '/env:JVM_PID={pid}/{{seen=1; found=0}} "
+                    f"seen && /Serving as {self._container_name},/{{found=1}} "
+                    f"END{{exit !found}}' /opt/hbase/logs/hbase-*-regionserver-*.log"
+                )
+                try:
+                    self.run_docker_exec_command(awk_cmd)
+                    logger.info(f"SUCCESS: {self._cluster_name} RegionServer is serving.")
+                    return True
+                except DockerExecCommandError:
+                    pass
             logging.info(f"Waiting {self._sleep_time} seconds before checking RegionServer initialization again")
             time.sleep(self._sleep_time)
 
