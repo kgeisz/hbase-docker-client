@@ -164,11 +164,13 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
         HBaseDockerClient.wait_for_clusters_to_start([active_cluster, replica_cluster])
 
 
-def reset_docker_container_environment(new_containers: bool = False):
+def reset_docker_container_environment(new_containers: bool = False,
+                                       cluster1_name: str = "Cluster 1",
+                                       cluster2_name: str = "Cluster 2") -> tuple[HBaseDockerClient, HBaseDockerClient]:
     if new_containers:
         logger.info("Docker containers will be started/restarted with a fresh data store directory")
 
-    cluster1, cluster2 = load_env_and_set_up_clients()
+    cluster1, cluster2 = load_env_and_set_up_clients(cluster1_name, cluster2_name)
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
     docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
 

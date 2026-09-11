@@ -8,8 +8,8 @@ import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, DockerExecCommandTimeoutError
 from python.src.logger_config import get_logger
-from python.src.utils import (add_common_drop_existing_tables_arg, clean_up_tables, load_env_and_set_up_clients,
-                              log_script_start, log_script_end)
+from python.src.utils import (add_common_drop_existing_tables_arg, add_common_new_containers_arg, clean_up_tables,
+                              log_script_start, log_script_end, reset_docker_container_environment)
 
 logger = get_logger(__name__)
 
@@ -91,10 +91,13 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser = add_common_drop_existing_tables_arg(parser)
+    parser = add_common_new_containers_arg(parser)
     args = parser.parse_args()
 
-    active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
-                                                                  cluster2_name="Read-Replica Cluster")
+    active_cluster, replica_cluster = reset_docker_container_environment(new_containers=args.new_containers,
+                                                                         cluster1_name="Active Cluster",
+                                                                         cluster2_name="Replica Cluster")
+
     table_name = "t1"
     column_family = "cf"
     column = f"{column_family}:c1"
