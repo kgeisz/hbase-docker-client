@@ -8,7 +8,7 @@ import argparse
 
 from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, DockerExecCommandTimeoutError
 from python.src.logger_config import get_logger
-from python.src.utils import (add_common_skip_table_cleanup_arg, clean_up_tables, load_env_and_set_up_clients,
+from python.src.utils import (add_common_drop_existing_tables_arg, clean_up_tables, load_env_and_set_up_clients,
                               log_script_start, log_script_end)
 
 logger = get_logger(__name__)
@@ -90,7 +90,7 @@ def main():
     start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_table_cleanup_arg(parser)
+    parser = add_common_drop_existing_tables_arg(parser)
     args = parser.parse_args()
 
     active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
@@ -99,7 +99,7 @@ def main():
     column_family = "cf"
     column = f"{column_family}:c1"
 
-    if not args.skip_table_cleanup_on_start:
+    if args.drop_existing_tables:
         clean_up_tables(active_cluster, replica_cluster)
 
     # Create a table on the active cluster and have it appear on the read-replica cluster

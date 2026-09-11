@@ -8,7 +8,7 @@ tables cannot be created/dropped on the replica cluster.
 import argparse
 
 from python.src.logger_config import get_logger
-from python.src.utils import (add_common_skip_table_cleanup_arg, clean_up_tables, load_env_and_set_up_clients,
+from python.src.utils import (add_common_drop_existing_tables_arg, clean_up_tables, load_env_and_set_up_clients,
                               log_script_start, log_script_end)
 
 logger = get_logger(__name__)
@@ -59,17 +59,14 @@ def main():
     start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_table_cleanup_arg(parser)
+    parser = add_common_drop_existing_tables_arg(parser)
     args = parser.parse_args()
 
     active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
                                                                   cluster2_name="Read-Replica Cluster")
     table_name = "t1"
     column_family = "cf"
-    if not args.skip_table_cleanup_on_start:
-        # Delete any lingering tables
-        logger.info(f"Checking if table '{table_name}' already exists on {active_cluster.name} "
-                    f"and dropping it if necessary")
+    if args.drop_existing_tables:
         clean_up_tables(active_cluster, replica_cluster)
 
     test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)

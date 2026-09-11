@@ -30,9 +30,10 @@ def log_script_end(file: str, script_logger=None, start_time=None):
     (script_logger or logger).info(f"========== END {os.path.basename(file)}{elapsed} ==========")
 
 
-def add_common_skip_table_cleanup_arg(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    parser.add_argument('-t', '--skip-table-cleanup-on-start', action='store_true',
-                        help='Skip cleaning up tables at the start of the test')
+def add_common_drop_existing_tables_arg(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.add_argument('-d', '--drop-existing-tables', action='store_true',
+                        help='Drop all existing tables on the active cluster and '
+                             'sync the replica cluster by the refreshing meta')
     return parser
 
 
