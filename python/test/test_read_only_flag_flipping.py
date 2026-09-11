@@ -22,14 +22,12 @@ This test script verifies behavior for multiple bug fixes:
 """
 import argparse
 
-from python.src.utils import (assert_correct_active_cluster_suffix, add_common_skip_container_stop_or_restart_arg,
-                              clean_up_tables, reset_cluster_setup, load_env_and_set_up_clients,
-                              create_table_and_test_active_and_replica_clusters,
-                              log_script_start, log_script_end)
-
 from python.src.environment_loader import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
+from python.src.utils import (assert_correct_active_cluster_suffix, add_common_new_containers_arg,
+                              clean_up_tables, create_table_and_test_active_and_replica_clusters,
+                              log_script_start, log_script_end, reset_docker_container_environment)
 
 COLUMN_FAMILY = "cf"
 logger = get_logger(__name__)
@@ -58,28 +56,11 @@ def main():
     start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_container_stop_or_restart_arg(parser)
+    parser = add_common_new_containers_arg(parser)
     args = parser.parse_args()
 
-    skip_container_restart = args.skip_container_start_or_restart
-
-    if skip_container_restart:
-        logger.info("Docker containers will NOT be started/restarted at the beginning of this test run")
-    else:
-        logger.info("Docker containers will be started/restarted at the beginning of this test run")
-
-    cluster1, cluster2 = load_env_and_set_up_clients()
+    cluster1, cluster2 = reset_docker_container_environment(new_containers=args.new_containers)
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
-    docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
-
-    reset_cluster_setup(active_cluster=cluster1, replica_cluster=cluster2,
-                        skip_container_restart=skip_container_restart, docker_compose_file=docker_compose_file,
-                        data_store_root=data_store_root)
-
-    if not args.skip_container_start_or_restart:
-        HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
-                                                      data_store_root=f'{data_store_root}')
-        HBaseDockerClient.wait_for_clusters_to_start([cluster1, cluster2])
 
     test_iterations = 1
     read_only_flag_flips_per_iteration = 15

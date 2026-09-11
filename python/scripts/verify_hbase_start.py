@@ -10,7 +10,7 @@ from python.src import get_env
 from python.src.hbase_docker_client import HBaseDockerClient
 from python.src.logger_config import get_logger
 from python.src.utils import (load_env_and_set_up_clients, log_script_start, log_script_end,
-                              add_common_skip_container_stop_or_restart_arg)
+                              add_common_new_containers_arg)
 
 logger = get_logger(__name__)
 
@@ -19,7 +19,7 @@ def main():
     start_time = log_script_start(__file__, logger)
 
     parser = argparse.ArgumentParser()
-    parser = add_common_skip_container_stop_or_restart_arg(parser)
+    parser = add_common_new_containers_arg(parser)
     args = parser.parse_args()
 
     active_cluster, replica_cluster = load_env_and_set_up_clients(cluster1_name="Active Cluster",
@@ -27,7 +27,7 @@ def main():
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
     docker_compose_file = get_env("DOCKER_COMPOSE_FILE")
 
-    if not args.skip_container_start_or_restart:
+    if args.new_containers:
         HBaseDockerClient.start_or_restart_containers(docker_compose_file=docker_compose_file,
                                                       data_store_root=f'{data_store_root}')
 
