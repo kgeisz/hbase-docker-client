@@ -140,7 +140,7 @@ def reset_cluster_setup(active_cluster: HBaseDockerClient, replica_cluster: HBas
     cluster is the replica cluster (read-only mode).
     """
     if not skip_container_restart:
-        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=data_store_root, sudo=sudo)
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_store_root=data_store_root, sudo=sudo)
 
     # If the containers are still running, then we need to run update_all_config in the HBase shell to update
     # read-only mode on each cluster. Otherwise, we can just modify the conf files and the containers will be restarted

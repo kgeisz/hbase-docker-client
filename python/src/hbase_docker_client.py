@@ -577,6 +577,15 @@ class HBaseDockerClient:
                                                              f"and its sub-dirs full permissions")
 
     @staticmethod
+    def remove_data_store_dir(data_store_root: str, sudo: bool = False) -> None:
+        command = ["rm", "-rf", data_store_root]
+        if sudo:
+            command = ["sudo"] + command
+        logger.info(f"Deleting HBase data root dir at: {data_store_root}")
+        HBaseDockerClient.__run_subprocess_command(command,
+                                                   f"Could not delete data store root: {data_store_root}")
+
+    @staticmethod
     def start_or_restart_containers(docker_compose_file: str | None = None, data_store_root: str | None = None) -> None:
         if data_store_root:
             HBaseDockerClient.set_up_data_store_dir(data_store_root)
@@ -609,17 +618,15 @@ class HBaseDockerClient:
         HBaseDockerClient.__run_subprocess_command(command, f"Failed to start service '{service_name}'")
 
     @staticmethod
-    def stop_containers(docker_compose_file: str | None = None, data_dir: str | None = None,
+    def stop_containers(docker_compose_file: str | None = None, data_store_root: str | None = None,
                         sudo: bool = False) -> None:
-        command = "docker compose"
+        command = ["docker", "compose"]
         if docker_compose_file:
-            command += f" -f {docker_compose_file}"
-        command += " down"
-        log_msg = "Stopping docker containers"
-        if data_dir:
-            rm_cmd = "sudo rm -rf" if sudo else "rm -rf"
-            command += f" && {rm_cmd} {data_dir}"
-            log_msg += f" and deleting HBase data root dir at: {data_dir}"
-        logger.info(f"{log_msg}")
-        HBaseDockerClient.__run_subprocess_command(command, "stop_containers failed", shell=True)
+            command += ["-f", docker_compose_file]
+        command += ["down"]
+        logger.info("Stopping docker containers")
+        HBaseDockerClient.__run_subprocess_command(command, "stop_containers failed")
         logger.info("Successfully stopped docker containers")
+
+        if data_store_root:
+            HBaseDockerClient.remove_data_store_dir(data_store_root, sudo)

@@ -85,7 +85,7 @@ def main():
     for i in range(1, test_iterations+1):
         logger.info(f"---------- Iteration {i} ----------")
 
-        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_store_root=f'{data_store_root}/*')
 
         # Make both clusters an active cluster (read-only disabled)
         cluster1.disable_read_only_mode(run_update_all_config=False)
@@ -139,7 +139,7 @@ def main():
     if args.clean_up_containers:
         logger.info("Stopping Docker containers and reverting test environment to having "
                     "one active cluster and one replica cluster")
-        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_dir=f'{data_store_root}/*')
+        HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_store_root=f'{data_store_root}/*')
         cluster1.disable_read_only_mode(run_update_all_config=False)
         cluster2.enable_read_only_mode(run_update_all_config=False)
 
