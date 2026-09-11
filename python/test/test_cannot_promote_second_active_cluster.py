@@ -64,13 +64,10 @@ def run_test_iteration(active_cluster: HBaseDockerClient, replica_cluster: HBase
     assert_correct_active_cluster_suffix(active_cluster, data_root)
 
 
-def main():
+def run_test(new_containers: bool = False):
     start_time = log_script_start(__file__, logger)
-    parser = argparse.ArgumentParser()
-    parser = add_common_new_containers_arg(parser)
-    args = parser.parse_args()
 
-    cluster1, cluster2 = reset_docker_container_environment(new_containers=args.new_containers)
+    cluster1, cluster2 = reset_docker_container_environment(new_containers=new_containers)
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
 
     assert_correct_active_cluster_suffix(cluster1, data_store_root)
@@ -85,6 +82,16 @@ def main():
             run_test_iteration(active_cluster=cluster2, replica_cluster=cluster1, data_root=data_store_root)
         logger.info(f"Finished iteration {i} of {test_iterations}")
     log_script_end(__file__, logger, start_time)
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser()
+    parser = add_common_new_containers_arg(parser)
+    parsed_args = parser.parse_args(args)
+
+    run_test(
+        new_containers=parsed_args.new_containers
+    )
 
 
 if __name__ == '__main__':

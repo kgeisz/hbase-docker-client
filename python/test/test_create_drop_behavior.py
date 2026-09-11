@@ -55,26 +55,35 @@ def test_table_creation_behavior(active_cluster, replica_cluster, table_name, co
     replica_cluster.assert_table_does_not_exist(table_name)
 
 
-def main():
+def run_test(drop_existing_tables: bool = False, new_containers: bool = False):
     start_time = log_script_start(__file__, logger)
 
-    parser = argparse.ArgumentParser()
-    parser = add_common_drop_existing_tables_arg(parser)
-    parser = add_common_new_containers_arg(parser)
-    args = parser.parse_args()
-
-    active_cluster, replica_cluster = reset_docker_container_environment(new_containers=args.new_containers,
-                                                                         cluster1_name="Active Cluster",
-                                                                         cluster2_name="Replica Cluster")
+    active_cluster, replica_cluster = reset_docker_container_environment(
+        new_containers=new_containers,
+        cluster1_name="Active Cluster",
+        cluster2_name="Replica Cluster"
+    )
 
     table_name = "t1"
     column_family = "cf"
-    if args.drop_existing_tables:
+    if drop_existing_tables:
         clean_up_tables(active_cluster, replica_cluster)
 
     test_table_creation_behavior(active_cluster, replica_cluster, table_name, column_family)
 
     log_script_end(__file__, logger, start_time)
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser()
+    parser = add_common_drop_existing_tables_arg(parser)
+    parser = add_common_new_containers_arg(parser)
+    parsed_args = parser.parse_args(args)
+
+    run_test(
+        drop_existing_tables=parsed_args.drop_existing_tables,
+        new_containers=parsed_args.new_containers
+    )
 
 
 if __name__ == "__main__":

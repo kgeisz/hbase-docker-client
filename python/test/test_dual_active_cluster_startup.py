@@ -68,14 +68,8 @@ def wait_for_active_cluster_file(data_store_root: str, timeout_seconds: int = 30
     logger.info(f"Active cluster suffix id file detected: {file_path}")
 
 
-def main():
+def run_test(clean_up_containers: bool = False):
     start_time = log_script_start(__file__, logger)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--clean-up-containers', action='store_true',
-                        help='Stop Docker containers and revert cluster configurations to one '
-                             'active cluster and one replica cluster after the test finishes')
-    args = parser.parse_args()
 
     cluster1, cluster2 = load_env_and_set_up_clients()
     data_store_root = get_env("HBASE_DATA_STORE_ROOT")
@@ -136,7 +130,7 @@ def main():
     logger.info("TEST PASSED: All dual active cluster startups were correctly rejected")
     logger.info("=" * 70)
 
-    if args.clean_up_containers:
+    if clean_up_containers:
         logger.info("Stopping Docker containers and reverting test environment to having "
                     "one active cluster and one replica cluster")
         HBaseDockerClient.stop_containers(docker_compose_file=docker_compose_file, data_store_root=f'{data_store_root}/*')
@@ -144,6 +138,18 @@ def main():
         cluster2.enable_read_only_mode(run_update_all_config=False)
 
     log_script_end(__file__, logger, start_time)
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--clean-up-containers', action='store_true',
+                        help='Stop Docker containers and revert cluster configurations to one '
+                             'active cluster and one replica cluster after the test finishes')
+    parsed_args = parser.parse_args(args)
+
+    run_test(
+        clean_up_containers=parsed_args.clean_up_containers
+    )
 
 
 if __name__ == '__main__':

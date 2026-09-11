@@ -86,23 +86,20 @@ def test_put_delete_behavior(active_cluster, replica_cluster, table_name, column
     replica_cluster.assert_table_row_count(table_name, 0)
 
 
-def main():
+def run_test(drop_existing_tables: bool = False, new_containers: bool = False):
     start_time = log_script_start(__file__, logger)
 
-    parser = argparse.ArgumentParser()
-    parser = add_common_drop_existing_tables_arg(parser)
-    parser = add_common_new_containers_arg(parser)
-    args = parser.parse_args()
-
-    active_cluster, replica_cluster = reset_docker_container_environment(new_containers=args.new_containers,
-                                                                         cluster1_name="Active Cluster",
-                                                                         cluster2_name="Replica Cluster")
+    active_cluster, replica_cluster = reset_docker_container_environment(
+        new_containers=new_containers,
+        cluster1_name="Active Cluster",
+        cluster2_name="Replica Cluster"
+    )
 
     table_name = "t1"
     column_family = "cf"
     column = f"{column_family}:c1"
 
-    if args.drop_existing_tables:
+    if drop_existing_tables:
         clean_up_tables(active_cluster, replica_cluster)
 
     # Create a table on the active cluster and have it appear on the read-replica cluster
@@ -112,6 +109,18 @@ def main():
     test_put_delete_behavior(active_cluster, replica_cluster, table_name, column)
 
     log_script_end(__file__, logger, start_time)
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser()
+    parser = add_common_drop_existing_tables_arg(parser)
+    parser = add_common_new_containers_arg(parser)
+    parsed_args = parser.parse_args(args)
+
+    run_test(
+        drop_existing_tables=parsed_args.drop_existing_tables,
+        new_containers=parsed_args.new_containers
+    )
 
 
 if __name__ == '__main__':
