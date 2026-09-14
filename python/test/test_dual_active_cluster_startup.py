@@ -11,7 +11,7 @@ import os
 import time
 
 from python.src.environment_loader import get_env
-from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError
+from python.src.hbase_docker_client import HBaseDockerClient, DockerExecCommandError, HBaseInitializationError
 from python.src.logger_config import get_logger
 from python.src.utils import load_env_and_set_up_clients, log_script_start, log_script_end
 
@@ -63,7 +63,7 @@ def wait_for_active_cluster_file(data_store_root: str, timeout_seconds: int = 30
     start = time.time()
     while not os.path.exists(file_path):
         if time.time() - start > timeout_seconds:
-            raise RuntimeError(f"Timed out after {timeout_seconds}s waiting for: {file_path}")
+            raise HBaseInitializationError(f"Timed out after {timeout_seconds}s waiting for: {file_path}")
         time.sleep(1)
     logger.info(f"Active cluster suffix id file detected: {file_path}")
 
@@ -111,9 +111,11 @@ def run_test(clean_up_containers: bool = False):
         first_running = check_cluster_processes(first_cluster)
         second_running = check_cluster_processes(second_cluster)
 
-        assert first_running, (
-            f"Expected {first_cluster.name} (started first) to be running, but HMaster is down"
-        )
+        if not first_running:
+            raise HBaseInitializationError(
+                f"Expected {first_cluster.name} (started first) to be running, but HMaster is down"
+            )
+
         assert not second_running, (
             f"Expected {second_cluster.name} (started second) to have failed, "
             f"but HMaster is still running"
