@@ -27,6 +27,10 @@ class DockerExecCommandTimeoutError(DockerExecCommandError):
     pass
 
 
+class HBaseInitializationError(Exception):
+    pass
+
+
 class HBaseDockerClient:
     def __init__(self, container_name: str, local_conf: str, hbase_ui_port: int = 16010,
                  cluster_name: str = "HBase Cluster", max_retries: int = 12, sleep_time: int = 5,
@@ -135,9 +139,11 @@ class HBaseDockerClient:
             logging.info(f"Waiting {self._sleep_time} seconds before requesting HBase UI again")
             time.sleep(self._sleep_time)
 
-        raise RuntimeError(f"\nTIMEOUT: {self._cluster_name} UI failed to respond after "
-                           f"{self._max_retries} attempts. "
-                           f"Last raised exception was: {last_exception}")
+        raise HBaseInitializationError(
+            f"\nTIMEOUT: {self._cluster_name} UI failed to respond after "
+            f"{self._max_retries} attempts. "
+            f"Last raised exception was: {last_exception}"
+        )
 
     def wait_for_master_initialization(self) -> bool:
         """Waits for the current HMaster process to log 'Master has completed initialization'."""
@@ -159,9 +165,10 @@ class HBaseDockerClient:
             logging.info(f"Waiting {self._sleep_time} seconds before checking Master initialization again")
             time.sleep(self._sleep_time)
 
-        raise RuntimeError(
+        raise HBaseInitializationError(
             f"\nTIMEOUT: {self._cluster_name} Master failed to initialize after "
-            f"{self._max_retries} attempts.")
+            f"{self._max_retries} attempts."
+        )
 
     def wait_for_region_server_initialization(self) -> bool:
         """Waits for the current HRegionServer process to log 'Serving as' message."""
@@ -183,9 +190,10 @@ class HBaseDockerClient:
             logging.info(f"Waiting {self._sleep_time} seconds before checking RegionServer initialization again")
             time.sleep(self._sleep_time)
 
-        raise RuntimeError(
+        raise HBaseInitializationError(
             f"\nTIMEOUT: {self._cluster_name} RegionServer failed to initialize after "
-            f"{self._max_retries} attempts.")
+            f"{self._max_retries} attempts."
+        )
 
     def check_server_status(self, desired_status: dict | None = None) -> bool:
         """Runs 'status' inside the HBase shell and validates the output."""
@@ -220,8 +228,9 @@ class HBaseDockerClient:
             logging.info(f"Waiting {self._sleep_time} seconds before getting status on {self.name} again")
             time.sleep(self._sleep_time)
 
-        raise RuntimeError(
-            f"\nTIMEOUT: {self._cluster_name} shell check failed after {self._max_retries} attempts.")
+        raise HBaseInitializationError(
+            f"\nTIMEOUT: {self._cluster_name} shell check failed after {self._max_retries} attempts."
+        )
 
     def get_hbase_status(self) -> str:
         logger.debug(f"Getting status of {self.name}")
